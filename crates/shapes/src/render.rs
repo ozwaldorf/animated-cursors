@@ -1,10 +1,11 @@
 //! Paints shapes with a white rim and soft shadow, then their glyphs.
 
+use cursor_core::color::{Color, encode};
 use cursor_core::paint::{Shadow, drop_shadow};
 use tiny_skia::{FillRule, LineCap, LineJoin, Paint, Path, PathBuilder, Pixmap, Stroke, Transform};
 
 use crate::outline::P;
-use crate::scene::{Color, Scene};
+use crate::scene::Scene;
 
 const BORDER: f32 = 1.4;
 const SHADOW: Shadow = Shadow { opacity: 0.35, offset: 1.2, blur: 0.9 };
@@ -20,12 +21,9 @@ fn path(points: &[P], closed: bool) -> Option<Path> {
 }
 
 fn paint(color: Color) -> Paint<'static> {
-    let encode = |c: f32| {
-        let c = if c <= 0.0031308 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 };
-        (c * 255.0).round().clamp(0.0, 255.0) as u8
-    };
+    let [r, g, b] = color.map(|c| (encode(c) * 255.0).round() as u8);
     let mut paint = Paint::default();
-    paint.set_color_rgba8(encode(color[0]), encode(color[1]), encode(color[2]), 255);
+    paint.set_color_rgba8(r, g, b, 255);
     paint
 }
 

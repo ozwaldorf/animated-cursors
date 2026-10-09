@@ -1,8 +1,9 @@
 //! Shared infrastructure for animated cursor themes: shape names, motion
-//! helpers, painting utilities and the theme writer.
+//! helpers, colors, painting utilities and the theme writer.
 
 pub mod check;
 pub mod cli;
+pub mod color;
 pub mod motion;
 pub mod paint;
 pub mod shape;

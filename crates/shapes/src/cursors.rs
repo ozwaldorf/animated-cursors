@@ -2,12 +2,13 @@
 //! with the hotspot at the origin.
 
 use cursor_core::Shape;
+use cursor_core::color::{Color, hex, mix as mix_color};
 use cursor_core::motion::{bump, ease, polar, spring, window, wobble};
 
 use crate::outline::{
     Outline, P, circle, clover, cookie, custom, flower, pentagon, pill, polygon, star, stretch, sunny,
 };
-use crate::scene::{Blob, Color, Glyph, Scene, hex, mix_color};
+use crate::scene::{Blob, Glyph, Scene};
 
 fn palette(rgb: u32) -> Color {
     hex(rgb)

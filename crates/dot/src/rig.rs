@@ -116,7 +116,7 @@ fn magnifier() -> Parts {
 pub fn parts(shape: Shape, phase: f32) -> Parts {
     match shape {
         Shape::Default => vec![("body", dot(0.0, 0.0, 11.0))],
-        Shape::Pointer => vec![("body", dot(0.0, 0.0, 6.0)), ("ring", ring(9.0, 2.5))],
+        Shape::Pointer => vec![("body", bar(0.0, 0.0, 15.0, 7.5, Some(55.0)))],
         Shape::Text => vec![("body", bar(0.0, 0.0, 20.0, 3.0, Some(90.0)))],
         Shape::VerticalText => vec![("body", bar(0.0, 0.0, 20.0, 3.0, Some(0.0)))],
         Shape::EwResize => arrows(dot(0.0, 0.0, 6.0), [0.0, 180.0], 10.0, 4.0),

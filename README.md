@@ -72,8 +72,8 @@ stretch, slide and rotate between shapes; parts present on one side grow from
 an anchor, ripple in, or spiral out. A transition played backwards is exactly
 the opposite transition, which the tests check for every pair.
 
-Idle loops rest, then play a small gesture: the dot beats twice, the link ring
-ripples out, carets breathe, resize chevrons nudge, fingers lift off the palm
+Idle loops rest, then play a small gesture: the dot beats twice, the fingertip
+pointer taps, carets breathe, resize chevrons nudge, fingers lift off the palm
 one by one, the fist squeezes, badges spin or shake, the not-allowed slash
 flips end over end, crosshair ticks pulse inward, and the zoom glyph turns.
 

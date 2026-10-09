@@ -62,14 +62,13 @@ pub fn gesture(shape: Shape, u: f32) -> Parts {
         Shape::Default => {
             each(rest, |_, p| scaled(p, origin, 1.0 + 0.12 * bump(u, 0.0, 0.4) + 0.07 * bump(u, 0.4, 0.4)))
         }
-        // The ring ripples out while the dot pulses.
-        Shape::Pointer => each(rest, |key, p| match (key, p.kind) {
-            ("ring", Kind::Arc { radius, start, sweep, enter }) => {
-                let swell = bump(u, 0.0, 0.8);
-                let kind = Kind::Arc { radius: radius + 1.3 * swell, start, sweep, enter };
-                Part { width: p.width * (1.0 - 0.3 * swell), kind, ..p }
+        // The fingertip taps twice, shortening as it presses.
+        Shape::Pointer => each(rest, |_, p| match p.kind {
+            Kind::Bar { length, angle } => {
+                let press = 1.0 - 0.14 * (bump(u, 0.0, 0.4) + bump(u, 0.45, 0.4));
+                Part { kind: Kind::Bar { length: length * press, angle }, ..p }
             }
-            _ => scaled(p, origin, 1.0 + 0.18 * bump(u, 0.1, 0.5)),
+            _ => p,
         }),
         Shape::Text | Shape::VerticalText => each(rest, |_, p| match p.kind {
             Kind::Bar { length, angle } => {

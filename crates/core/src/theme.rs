@@ -19,6 +19,15 @@ pub const GRID: f32 = 32.0;
 pub const SIZES: [u32; 6] = [24, 32, 40, 48, 56, 64];
 pub const TRANSITION_FRAMES: usize = 24;
 pub const TRANSITION_DELAY: u32 = 5;
+/// Designs are drawn this much larger than the nominal size, on a canvas
+/// enlarged to match, so a size-24 cursor reads like a conventional size-24
+/// arrow. 1.5 keeps hotspots on multiples of 4 units on whole pixels.
+pub const SCALE: f32 = 1.5;
+
+/// Side of an ordinary cursor image at nominal `size`.
+pub fn canvas(size: u32) -> u32 {
+    (size as f32 * SCALE).round() as u32
+}
 
 pub struct Frame<S> {
     pub scene: S,
@@ -34,8 +43,8 @@ pub trait Theme: Sync {
     const ID: &'static str;
     const TITLE: &'static str;
 
-    /// Hotspot position inside the 32x32 cell of an ordinary cursor. Multiples
-    /// of 4 keep it on a whole pixel at every size.
+    /// Hotspot position inside the 32x32 design cell of an ordinary cursor.
+    /// Multiples of 4 keep it on a whole pixel at every size.
     fn hotspot(&self, shape: Shape) -> (f32, f32);
 
     /// Frames of an ordinary cursor; more than one makes it loop.
@@ -66,12 +75,12 @@ pub fn transition_frames<T: Theme>(theme: &T, from: Shape, to: Shape) -> Vec<Fra
         .collect()
 }
 
-/// Renders a scene on a `canvas` square with the hotspot at the center of
-/// pixel `hotspot`.
-pub fn render<T: Theme>(theme: &T, scene: &T::Scene, size: u32, canvas: u32, hotspot: (u32, u32)) -> Pixmap {
-    let scale = size as f32 / GRID;
+/// Renders a scene at nominal `size` on a `side` square, with the hotspot at
+/// the center of pixel `hotspot`.
+pub fn render<T: Theme>(theme: &T, scene: &T::Scene, size: u32, side: u32, hotspot: (u32, u32)) -> Pixmap {
+    let scale = canvas(size) as f32 / GRID;
     let (x, y) = (hotspot.0 as f32 + 0.5, hotspot.1 as f32 + 0.5);
-    let mut pixmap = Pixmap::new(canvas, canvas).expect("nonzero size");
+    let mut pixmap = Pixmap::new(side, side).expect("nonzero size");
     theme.draw(scene, &mut pixmap, Transform::from_row(scale, 0.0, 0.0, scale, x, y));
     pixmap
 }
@@ -79,16 +88,16 @@ pub fn render<T: Theme>(theme: &T, scene: &T::Scene, size: u32, canvas: u32, hot
 /// Hotspot pixel of an ordinary cursor at `size`.
 pub fn hotspot_pixel<T: Theme>(theme: &T, shape: Shape, size: u32) -> (u32, u32) {
     let (x, y) = theme.hotspot(shape);
-    let pixel = |unit: f32| (unit * size as f32 / GRID).round() as u32;
+    let pixel = |unit: f32| (unit * canvas(size) as f32 / GRID).round() as u32;
     (pixel(x), pixel(y))
 }
 
-/// Ordinary cursors fill one nominal-size square; transitions get twice that,
+/// Ordinary cursors fill one canvas; transitions get one twice as wide,
 /// centered on the hotspot, to fit both endpoints.
 pub fn images<T: Theme>(theme: &T, frames: &[Frame<T::Scene>], size: u32, layout: Layout) -> Vec<Image> {
     let cursor = |shape: Shape, scene: &T::Scene| {
         let hotspot = hotspot_pixel(theme, shape, size);
-        (render(theme, scene, size, size, hotspot), hotspot)
+        (render(theme, scene, size, canvas(size), hotspot), hotspot)
     };
     let last = frames.len() - 1;
     frames
@@ -99,9 +108,12 @@ pub fn images<T: Theme>(theme: &T, frames: &[Frame<T::Scene>], size: u32, layout
                 Layout::Cursor(shape) => cursor(shape, &frame.scene),
                 Layout::Transition(from, to) if index == 0 || index == last => {
                     let (pixmap, hotspot) = cursor(if index == 0 { from } else { to }, &frame.scene);
-                    (centered(&pixmap, hotspot, size), (size, size))
+                    (centered(&pixmap, hotspot, canvas(size)), (canvas(size), canvas(size)))
                 }
-                Layout::Transition(..) => (render(theme, &frame.scene, size, size * 2, (size, size)), (size, size)),
+                Layout::Transition(..) => {
+                    let c = canvas(size);
+                    (render(theme, &frame.scene, size, c * 2, (c, c)), (c, c))
+                }
             };
             let (width, height) = (pixmap.width(), pixmap.height());
             Image { size, width, height, xhot, yhot, delay: frame.delay, pixels: argb(&pixmap) }
@@ -111,10 +123,10 @@ pub fn images<T: Theme>(theme: &T, frames: &[Frame<T::Scene>], size: u32, layout
 
 /// Copies an ordinary cursor onto a transition canvas, hotspot at its center,
 /// so endpoints match the cursor exactly.
-fn centered(pixmap: &Pixmap, (xhot, yhot): (u32, u32), size: u32) -> Pixmap {
-    let mut canvas = Pixmap::new(size * 2, size * 2).expect("nonzero size");
-    let (dx, dy) = ((size - xhot) as usize, (size - yhot) as usize);
-    let (width, stride) = (pixmap.width() as usize * 4, size as usize * 8);
+fn centered(pixmap: &Pixmap, (xhot, yhot): (u32, u32), side: u32) -> Pixmap {
+    let mut canvas = Pixmap::new(side * 2, side * 2).expect("nonzero size");
+    let (dx, dy) = ((side - xhot) as usize, (side - yhot) as usize);
+    let (width, stride) = (pixmap.width() as usize * 4, side as usize * 8);
     for (row, line) in pixmap.data().chunks_exact(width).enumerate() {
         let start = (row + dy) * stride + dx * 4;
         canvas.data_mut()[start..start + width].copy_from_slice(line);
@@ -138,9 +150,9 @@ pub fn transition_names(from: Shape, to: Shape) -> Vec<String> {
 /// pauses at the endpoints.
 fn preview<T: Theme>(theme: &T, frames: &[Frame<T::Scene>], transition: bool, path: &Path) -> io::Result<()> {
     const SIZE: u32 = 64;
-    let canvas = SIZE * 2;
+    let side = canvas(SIZE);
     let pixmaps: Vec<Pixmap> =
-        frames.iter().map(|frame| render(theme, &frame.scene, SIZE, canvas, (SIZE, SIZE))).collect();
+        frames.iter().map(|frame| render(theme, &frame.scene, SIZE, side * 2, (side, side))).collect();
     let last = pixmaps.len() - 1;
     let sequence: Vec<(usize, u16)> = if transition {
         let hold = |index: usize, end: usize| if index == end { 40 } else { 2 };
@@ -150,7 +162,7 @@ fn preview<T: Theme>(theme: &T, frames: &[Frame<T::Scene>], transition: bool, pa
     };
     let (frames, delays): (Vec<&Pixmap>, Vec<u16>) =
         sequence.into_iter().map(|(i, delay)| (&pixmaps[i], delay)).unzip();
-    gif(path, &frames, &delays, 2)
+    gif(path, &frames, &delays, 1)
 }
 
 /// Writes pixmaps as a looping GIF over a neutral grey, scaled up by `scale`

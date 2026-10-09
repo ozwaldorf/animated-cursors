@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::shape::{LEGACY_ALIASES, PAIRS, Shape};
-use crate::theme::{GRID, SIZES, TRANSITION_DELAY, TRANSITION_FRAMES, Theme, generate, transition_names};
+use crate::theme::{GRID, SIZES, TRANSITION_DELAY, TRANSITION_FRAMES, Theme, canvas, generate, transition_names};
 use crate::xcursor::{Image, decode};
 
 fn read(cursors: &Path, name: &str) -> HashMap<u32, Vec<Image>> {
@@ -52,10 +52,10 @@ pub fn theme<T: Theme>(theme: &T) {
         assert_eq!(sizes.len(), SIZES.len(), "{shape:?}");
         for (size, frames) in sizes {
             let (x, y) = theme.hotspot(*shape);
-            assert_eq!((x * *size as f32 / GRID).fract(), 0.0, "{shape:?} hotspot at {size}");
-            assert_eq!((y * *size as f32 / GRID).fract(), 0.0, "{shape:?} hotspot at {size}");
+            assert_eq!((x * canvas(*size) as f32 / GRID).fract(), 0.0, "{shape:?} hotspot at {size}");
+            assert_eq!((y * canvas(*size) as f32 / GRID).fract(), 0.0, "{shape:?} hotspot at {size}");
             assert_eq!(frames.len(), expected, "{shape:?}");
-            assert!(frames.iter().all(|image| image.width == *size && image.height == *size));
+            assert!(frames.iter().all(|image| image.width == canvas(*size) && image.height == canvas(*size)));
             frames.iter().for_each(|image| assert_unclipped(image, &format!("{shape:?} at {size}")));
             assert!(expected == 1 || frames.iter().all(|image| image.delay > 0), "{shape:?} delays");
         }
@@ -68,7 +68,8 @@ pub fn theme<T: Theme>(theme: &T) {
             let frames = &transition[&size];
             assert_eq!(frames.len(), TRANSITION_FRAMES, "{}", names[0]);
             for image in frames {
-                assert_eq!((image.width, image.height, image.xhot, image.yhot), (2 * size, 2 * size, size, size));
+                let c = canvas(size);
+                assert_eq!((image.width, image.height, image.xhot, image.yhot), (2 * c, 2 * c, c, c));
                 assert_eq!(image.delay, TRANSITION_DELAY);
                 assert!(image.pixels.iter().any(|pixel| pixel >> 24 > 0), "{} is empty", names[0]);
                 assert_unclipped(image, &format!("{} at {size}", names[0]));

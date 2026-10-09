@@ -30,7 +30,7 @@ flowers, pills) in its own vivid color, with white glyphs:
 | Crosshair | Four triangles around a dot | Charcoal |
 | Zoom | Sunny and 12-sided cookie with plus and minus | Magenta |
 
-Each cursor rests for a few seconds, then plays a short springy idle gesture:
+Each cursor rests for 1 to 2 seconds, then plays a short springy idle gesture:
 the arrow nods about its tip, the clover, bloom, flower and zoom shapes twirl
 by one of their symmetries (so the loop closes seamlessly), resize chevrons
 nudge outward, grabbing squeezes, no-drop and not-allowed shake, and the
@@ -142,5 +142,7 @@ cursor {
 A transition is an ordinary animated Xcursor file named
 `cursors/<from>-to-<to>` with Wayland cursor-shape names, 24 frames at 5 ms.
 One file serves both directions, and shape aliases share it through symlinks.
-Transition frames use a canvas twice the nominal size centered on the hotspot.
+Cursors are drawn 1.5 times their nominal size on canvases enlarged to match
+(36 px at size 24), so they read like conventional themes. Transition frames
+use a canvas twice that, centered on the hotspot.
 Only applications using the cursor-shape protocol get transitions.

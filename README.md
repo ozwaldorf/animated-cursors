@@ -96,13 +96,69 @@ flips end over end, crosshair ticks pulse inward, and the zoom glyph turns.
 | <img src="previews/dot/default-to-text.gif" alt="default / text" width="96"><br><sub>default / text</sub> | <img src="previews/dot/default-to-wait.gif" alt="default / wait" width="96"><br><sub>default / wait</sub> | <img src="previews/dot/grabbing-to-copy.gif" alt="grabbing / copy" width="96"><br><sub>grabbing / copy</sub> | <img src="previews/dot/grabbing-to-no-drop.gif" alt="grabbing / no-drop" width="96"><br><sub>grabbing / no-drop</sub> | <img src="previews/dot/grabbing-to-not-allowed.gif" alt="grabbing / not-allowed" width="96"><br><sub>grabbing / not-allowed</sub> |
 | <img src="previews/dot/grab-to-grabbing.gif" alt="grab / grabbing" width="96"><br><sub>grab / grabbing</sub> | <img src="previews/dot/pointer-to-text.gif" alt="pointer / text" width="96"><br><sub>pointer / text</sub> | <img src="previews/dot/text-to-vertical-text.gif" alt="text / vertical-text" width="96"><br><sub>text / vertical-text</sub> | <img src="previews/dot/zoom-in-to-zoom-out.gif" alt="zoom-in / zoom-out" width="96"><br><sub>zoom-in / zoom-out</sub> | |
 
+### Fluid (`animated_fluid_cursors`)
+
+Liquid metaballs. Every cursor is a few drops (circles, capsules and round
+cones) summed into one distance field through an exponential smooth union, so
+nearby drops melt together with soft necks. Carved drops cut white glyphs out
+of the liquid, and inlaid drops refill holes, as in the zoom lens and the ban
+sign. Each cursor has its own color, and where differently colored drops meet,
+their colors blend:
+
+| Cursor | Drops | Color |
+| --- | --- | --- |
+| Arrow | Teardrop, tip on the hotspot | Blue |
+| Link | Upright teardrop with a carved hole | Coral |
+| Text, vertical text | Stem melting into two serifs | Indigo |
+| Resize | Bar with chevron arrowheads | Teal |
+| Grab, grabbing | Palm with a thumb and three fingers that pull in to knuckles | Sky, navy |
+| Copy, no drop | Fist with a badge drop carved with a plus or a slash | Green, red |
+| Not allowed | Ring with an inlaid slash | Red |
+| Progress | Teardrop with two drops circling its belly | Blue, amber, coral |
+| Wait | Core with three orbiting drops | Violet, magenta, amber, teal |
+| Crosshair | Dot and four ticks | Charcoal |
+| Zoom | Lens ring with an inlaid plus or minus, and a handle | Magenta |
+
+Drops sharing a key flow into each other while the union gets briefly gooier
+mid-transition. Drops present on one side bud out of an anchor or melt back
+into it, with their border shrinking along with them. A transition played
+backwards is exactly the opposite transition, which the tests check for every
+pair.
+
+Idle loops rest, then play a liquid gesture: a drip sags from the arrow and
+springs back with a jiggle, the link drop taps, a bead runs down the text
+stem, arrowheads pull off the resize bar, fingers stretch one after another,
+the fist squeezes, the copy badge tugs away while its plus turns, the no-drop
+badge shakes, the ban sign wobbles like jelly, crosshair ticks fall into the
+center and pull back out, and the zoom glyph turns. Progress drops circle
+continuously; wait drops are flung out and fall back in twice per turn.
+
+#### Cursors
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/fluid/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/fluid/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/fluid/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | <img src="previews/fluid/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/fluid/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
+| <img src="previews/fluid/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/fluid/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/fluid/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/fluid/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> | <img src="previews/fluid/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> |
+| <img src="previews/fluid/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/fluid/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/fluid/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/fluid/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/fluid/text.gif" alt="text" width="96"><br><sub>text</sub> |
+| <img src="previews/fluid/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/fluid/wait.gif" alt="wait" width="96"><br><sub>wait</sub> | <img src="previews/fluid/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/fluid/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | |
+
+#### Transitions
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/fluid/default-to-col-resize.gif" alt="default / col-resize" width="96"><br><sub>default / col-resize</sub> | <img src="previews/fluid/default-to-crosshair.gif" alt="default / crosshair" width="96"><br><sub>default / crosshair</sub> | <img src="previews/fluid/default-to-ew-resize.gif" alt="default / ew-resize" width="96"><br><sub>default / ew-resize</sub> | <img src="previews/fluid/default-to-grabbing.gif" alt="default / grabbing" width="96"><br><sub>default / grabbing</sub> | <img src="previews/fluid/default-to-grab.gif" alt="default / grab" width="96"><br><sub>default / grab</sub> |
+| <img src="previews/fluid/default-to-nesw-resize.gif" alt="default / nesw-resize" width="96"><br><sub>default / nesw-resize</sub> | <img src="previews/fluid/default-to-ns-resize.gif" alt="default / ns-resize" width="96"><br><sub>default / ns-resize</sub> | <img src="previews/fluid/default-to-nwse-resize.gif" alt="default / nwse-resize" width="96"><br><sub>default / nwse-resize</sub> | <img src="previews/fluid/default-to-pointer.gif" alt="default / pointer" width="96"><br><sub>default / pointer</sub> | <img src="previews/fluid/default-to-progress.gif" alt="default / progress" width="96"><br><sub>default / progress</sub> |
+| <img src="previews/fluid/default-to-text.gif" alt="default / text" width="96"><br><sub>default / text</sub> | <img src="previews/fluid/default-to-wait.gif" alt="default / wait" width="96"><br><sub>default / wait</sub> | <img src="previews/fluid/grabbing-to-copy.gif" alt="grabbing / copy" width="96"><br><sub>grabbing / copy</sub> | <img src="previews/fluid/grabbing-to-no-drop.gif" alt="grabbing / no-drop" width="96"><br><sub>grabbing / no-drop</sub> | <img src="previews/fluid/grabbing-to-not-allowed.gif" alt="grabbing / not-allowed" width="96"><br><sub>grabbing / not-allowed</sub> |
+| <img src="previews/fluid/grab-to-grabbing.gif" alt="grab / grabbing" width="96"><br><sub>grab / grabbing</sub> | <img src="previews/fluid/pointer-to-text.gif" alt="pointer / text" width="96"><br><sub>pointer / text</sub> | <img src="previews/fluid/text-to-vertical-text.gif" alt="text / vertical-text" width="96"><br><sub>text / vertical-text</sub> | <img src="previews/fluid/zoom-in-to-zoom-out.gif" alt="zoom-in / zoom-out" width="96"><br><sub>zoom-in / zoom-out</sub> | |
+
 ## Layout
 
-- `crates/core`: shape names and aliases, motion and paint helpers, the theme
-  writer (Xcursor files, transition files, symlinks, GIF previews), the CLI,
-  and the consistency checks every theme runs.
-- `crates/dot`, `crates/shapes`: one crate per theme. Each implements
-  `cursor_core::Theme`: hotspots, cursor frames, transition frames and drawing.
+- `crates/core`: shape names and aliases, motion, color and paint helpers,
+  the theme writer (Xcursor files, transition files, symlinks, GIF previews),
+  the CLI, and the consistency checks every theme runs.
+- `crates/dot`, `crates/fluid`, `crates/shapes`: one crate per theme. Each
+  implements `cursor_core::Theme`: hotspots, cursor frames, transition frames
+  and drawing.
 
 A new theme is a crate with a `Theme` implementation, a three-line `main.rs`
 calling `cursor_core::cli::run`, and a test calling `cursor_core::check::theme`.
@@ -115,6 +171,7 @@ to the ordinary cursors, nothing clipped at the canvas edge, and working aliases
 ```sh
 nix build .#shapes                       # theme in result/share/icons
 nix build .#dot
+nix build .#fluid
 nix build .#niri --out-link result-niri  # patched Niri 26.04
 ```
 
@@ -125,6 +182,7 @@ nix develop
 cargo test
 cargo run --release -p shapes-cursors -- --output build/shapes --preview previews/shapes
 cargo run --release -p dot-cursors -- --output build/dot --preview previews/dot
+cargo run --release -p fluid-cursors -- --output build/fluid --preview previews/fluid
 ```
 
 ## Niri

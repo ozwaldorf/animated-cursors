@@ -1,0 +1,9 @@
+[package]
+name = "fluid-cursors"
+description = "Liquid metaball cursors that melt into each other"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+cursor-core.workspace = true
+tiny-skia.workspace = true

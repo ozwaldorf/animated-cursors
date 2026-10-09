@@ -40,6 +40,7 @@
             ];
           });
           dot = theme "dot-cursors" "animated_dot_cursors";
+          fluid = theme "fluid-cursors" "animated_fluid_cursors";
           shapes = theme "shapes-cursors" "animated_shapes_cursors";
           default = self.packages.${system}.dot;
         }

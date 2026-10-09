@@ -1,0 +1,9 @@
+[package]
+name = "dot-cursors"
+description = "Minimal dot and ring cursors with reversible transitions"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+cursor-core.workspace = true
+tiny-skia.workspace = true

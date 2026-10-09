@@ -1,5 +1,5 @@
 {
-  description = "Minimal dot cursors designed for reversible transitions";
+  description = "Parametric cursor themes with reversible transitions";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/104240a772428cc2e20d8fd86c9ddbb886bbaff2";
   outputs =
     { self, nixpkgs }:
@@ -15,6 +15,20 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
+          # Builds a theme crate, runs the workspace tests, then writes the theme.
+          theme =
+            crate: id:
+            pkgs.rustPlatform.buildRustPackage {
+              pname = crate;
+              version = "0.1.0";
+              src = self;
+              cargoLock.lockFile = ./Cargo.lock;
+              cargoBuildFlags = [ "-p" crate ];
+              postInstall = ''
+                $out/bin/${crate} --output "$out/share/icons/${id}"
+                rm -r "$out/bin"
+              '';
+            };
         in
         {
           niri = pkgs.niri.overrideAttrs (old: {
@@ -25,16 +39,9 @@
               "cursor::tests"
             ];
           });
-          default = pkgs.rustPlatform.buildRustPackage {
-            pname = "animated-dot-cursors";
-            version = "0.1.0";
-            src = self;
-            cargoLock.lockFile = ./Cargo.lock;
-            postInstall = ''
-              $out/bin/dot-cursors --output "$out/share/icons/animated_dot_cursors"
-              rm -r "$out/bin"
-            '';
-          };
+          dot = theme "dot-cursors" "animated_dot_cursors";
+          shapes = theme "shapes-cursors" "animated_shapes_cursors";
+          default = self.packages.${system}.dot;
         }
       );
       devShells = eachSystem (

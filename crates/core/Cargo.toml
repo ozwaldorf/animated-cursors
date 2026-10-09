@@ -1,0 +1,9 @@
+[package]
+name = "cursor-core"
+description = "Shared shapes, rendering and Xcursor output for animated cursor themes"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gif.workspace = true
+tiny-skia.workspace = true

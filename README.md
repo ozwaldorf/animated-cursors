@@ -5,7 +5,9 @@ patched Niri. Every cursor is drawn from code, so transitions interpolate the
 design itself rather than cross-fading images. Unpatched compositors and X11
 applications see ordinary (animated) Xcursor themes.
 
-Open `previews/index.html` for every cursor and transition in both themes.
+Each theme section below previews every cursor and transition at 64 px
+nominal size. Idle loops play in real time after their rest; transitions are
+slowed and play both ways with pauses at the ends (the real ones last 120 ms).
 
 ## Themes
 
@@ -44,6 +46,25 @@ by interpolating radii. Transitions spring with a slight overshoot and twist,
 sweep color through OKLab, morph glyphs that share a key, and pop the rest in
 or out.
 
+
+#### Cursors
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/shapes/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/shapes/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/shapes/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | <img src="previews/shapes/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/shapes/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
+| <img src="previews/shapes/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/shapes/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/shapes/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/shapes/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> | <img src="previews/shapes/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> |
+| <img src="previews/shapes/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/shapes/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/shapes/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/shapes/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/shapes/text.gif" alt="text" width="96"><br><sub>text</sub> |
+| <img src="previews/shapes/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/shapes/wait.gif" alt="wait" width="96"><br><sub>wait</sub> | <img src="previews/shapes/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/shapes/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | |
+
+#### Transitions
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/shapes/default-to-col-resize.gif" alt="default / col-resize" width="96"><br><sub>default / col-resize</sub> | <img src="previews/shapes/default-to-crosshair.gif" alt="default / crosshair" width="96"><br><sub>default / crosshair</sub> | <img src="previews/shapes/default-to-ew-resize.gif" alt="default / ew-resize" width="96"><br><sub>default / ew-resize</sub> | <img src="previews/shapes/default-to-grabbing.gif" alt="default / grabbing" width="96"><br><sub>default / grabbing</sub> | <img src="previews/shapes/default-to-grab.gif" alt="default / grab" width="96"><br><sub>default / grab</sub> |
+| <img src="previews/shapes/default-to-nesw-resize.gif" alt="default / nesw-resize" width="96"><br><sub>default / nesw-resize</sub> | <img src="previews/shapes/default-to-ns-resize.gif" alt="default / ns-resize" width="96"><br><sub>default / ns-resize</sub> | <img src="previews/shapes/default-to-nwse-resize.gif" alt="default / nwse-resize" width="96"><br><sub>default / nwse-resize</sub> | <img src="previews/shapes/default-to-pointer.gif" alt="default / pointer" width="96"><br><sub>default / pointer</sub> | <img src="previews/shapes/default-to-progress.gif" alt="default / progress" width="96"><br><sub>default / progress</sub> |
+| <img src="previews/shapes/default-to-text.gif" alt="default / text" width="96"><br><sub>default / text</sub> | <img src="previews/shapes/default-to-wait.gif" alt="default / wait" width="96"><br><sub>default / wait</sub> | <img src="previews/shapes/grabbing-to-copy.gif" alt="grabbing / copy" width="96"><br><sub>grabbing / copy</sub> | <img src="previews/shapes/grabbing-to-no-drop.gif" alt="grabbing / no-drop" width="96"><br><sub>grabbing / no-drop</sub> | <img src="previews/shapes/grabbing-to-not-allowed.gif" alt="grabbing / not-allowed" width="96"><br><sub>grabbing / not-allowed</sub> |
+| <img src="previews/shapes/grab-to-grabbing.gif" alt="grab / grabbing" width="96"><br><sub>grab / grabbing</sub> | <img src="previews/shapes/pointer-to-text.gif" alt="pointer / text" width="96"><br><sub>pointer / text</sub> | <img src="previews/shapes/text-to-vertical-text.gif" alt="text / vertical-text" width="96"><br><sub>text / vertical-text</sub> | <img src="previews/shapes/zoom-in-to-zoom-out.gif" alt="zoom-in / zoom-out" width="96"><br><sub>zoom-in / zoom-out</sub> | |
+
 ### Dot (`animated_dot_cursors`)
 
 Minimal dots and rings built from keyed bars, chevrons and arcs. Shared parts
@@ -55,6 +76,25 @@ Idle loops rest, then play a small gesture: the dot beats twice, the link ring
 ripples out, carets breathe, resize chevrons nudge, fingers lift off the palm
 one by one, the fist squeezes, badges spin or shake, the not-allowed slash
 flips end over end, crosshair ticks pulse inward, and the zoom glyph turns.
+
+
+#### Cursors
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/dot/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/dot/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/dot/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | <img src="previews/dot/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/dot/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
+| <img src="previews/dot/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/dot/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/dot/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/dot/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> | <img src="previews/dot/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> |
+| <img src="previews/dot/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/dot/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/dot/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/dot/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/dot/text.gif" alt="text" width="96"><br><sub>text</sub> |
+| <img src="previews/dot/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/dot/wait.gif" alt="wait" width="96"><br><sub>wait</sub> | <img src="previews/dot/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/dot/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | |
+
+#### Transitions
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/dot/default-to-col-resize.gif" alt="default / col-resize" width="96"><br><sub>default / col-resize</sub> | <img src="previews/dot/default-to-crosshair.gif" alt="default / crosshair" width="96"><br><sub>default / crosshair</sub> | <img src="previews/dot/default-to-ew-resize.gif" alt="default / ew-resize" width="96"><br><sub>default / ew-resize</sub> | <img src="previews/dot/default-to-grabbing.gif" alt="default / grabbing" width="96"><br><sub>default / grabbing</sub> | <img src="previews/dot/default-to-grab.gif" alt="default / grab" width="96"><br><sub>default / grab</sub> |
+| <img src="previews/dot/default-to-nesw-resize.gif" alt="default / nesw-resize" width="96"><br><sub>default / nesw-resize</sub> | <img src="previews/dot/default-to-ns-resize.gif" alt="default / ns-resize" width="96"><br><sub>default / ns-resize</sub> | <img src="previews/dot/default-to-nwse-resize.gif" alt="default / nwse-resize" width="96"><br><sub>default / nwse-resize</sub> | <img src="previews/dot/default-to-pointer.gif" alt="default / pointer" width="96"><br><sub>default / pointer</sub> | <img src="previews/dot/default-to-progress.gif" alt="default / progress" width="96"><br><sub>default / progress</sub> |
+| <img src="previews/dot/default-to-text.gif" alt="default / text" width="96"><br><sub>default / text</sub> | <img src="previews/dot/default-to-wait.gif" alt="default / wait" width="96"><br><sub>default / wait</sub> | <img src="previews/dot/grabbing-to-copy.gif" alt="grabbing / copy" width="96"><br><sub>grabbing / copy</sub> | <img src="previews/dot/grabbing-to-no-drop.gif" alt="grabbing / no-drop" width="96"><br><sub>grabbing / no-drop</sub> | <img src="previews/dot/grabbing-to-not-allowed.gif" alt="grabbing / not-allowed" width="96"><br><sub>grabbing / not-allowed</sub> |
+| <img src="previews/dot/grab-to-grabbing.gif" alt="grab / grabbing" width="96"><br><sub>grab / grabbing</sub> | <img src="previews/dot/pointer-to-text.gif" alt="pointer / text" width="96"><br><sub>pointer / text</sub> | <img src="previews/dot/text-to-vertical-text.gif" alt="text / vertical-text" width="96"><br><sub>text / vertical-text</sub> | <img src="previews/dot/zoom-in-to-zoom-out.gif" alt="zoom-in / zoom-out" width="96"><br><sub>zoom-in / zoom-out</sub> | |
 
 ## Layout
 

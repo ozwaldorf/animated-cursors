@@ -1,0 +1,12 @@
+[package]
+name = "dot-cursors"
+version = "0.1.0"
+edition = "2024"
+description = "Parametric dot cursors with reversible transitions"
+
+[dependencies]
+gif = "0.13"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
+
+[profile.dev]
+opt-level = 2

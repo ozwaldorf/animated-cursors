@@ -124,11 +124,11 @@ const STEP: u32 = 30;
 /// Milliseconds at rest, then gesture frames.
 fn timing(shape: Shape) -> (u32, usize) {
     match shape {
-        Shape::Default => (3200, 22),
-        Shape::Text | Shape::VerticalText => (3600, 18),
-        Shape::Pointer | Shape::Grab | Shape::Copy | Shape::ColResize => (2400, 24),
-        Shape::NotAllowed | Shape::NoDrop => (2200, 20),
-        _ => (2800, 20),
+        Shape::Default => (1600, 22),
+        Shape::Text | Shape::VerticalText => (1800, 18),
+        Shape::Pointer | Shape::Grab | Shape::Copy | Shape::ColResize => (1200, 24),
+        Shape::NotAllowed | Shape::NoDrop => (1000, 20),
+        _ => (1400, 20),
     }
 }
 

@@ -209,4 +209,7 @@ shadow, idle gestures and transitions included, fills the image less a 2 px
 margin. Each cursor's hotspot is placed to center all of its frames, and
 transition frames between the endpoints center themselves, carrying their own
 hotspots.
+Asking for either endpoint mid-transition reverses it in place; any other
+cursor is queued, and only the latest queued request plays once the current
+transition finishes.
 Only applications using the cursor-shape protocol get transitions.

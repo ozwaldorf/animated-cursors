@@ -28,6 +28,7 @@
                 $out/bin/${crate} --output "$out/share/icons/${id}"
                 rm -r "$out/bin"
               '';
+              meta.license = pkgs.lib.licenses.gpl3Plus;
             };
         in
         {

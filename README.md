@@ -217,3 +217,7 @@ Asking for either endpoint mid-transition reverses it in place; any other
 cursor is queued, and only the latest queued request plays once the current
 transition finishes.
 Only applications using the cursor-shape protocol get transitions.
+
+## License
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).

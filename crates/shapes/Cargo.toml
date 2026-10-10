@@ -3,6 +3,7 @@ name = "shapes-cursors"
 description = "Material 3 Expressive shape cursors with morphing transitions"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [dependencies]
 cursor-core.workspace = true

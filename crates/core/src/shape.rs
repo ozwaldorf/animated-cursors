@@ -96,7 +96,7 @@ impl Shape {
     }
 }
 
-pub const PAIRS: [(Shape, Shape); 19] = [
+pub const PAIRS: [(Shape, Shape); 24] = [
     (Shape::Default, Shape::Pointer),
     (Shape::Default, Shape::Text),
     (Shape::Pointer, Shape::Text),
@@ -115,6 +115,11 @@ pub const PAIRS: [(Shape, Shape); 19] = [
     (Shape::Grabbing, Shape::NoDrop),
     (Shape::Default, Shape::Crosshair),
     (Shape::Text, Shape::VerticalText),
+    (Shape::Text, Shape::EwResize),
+    (Shape::Text, Shape::NsResize),
+    (Shape::Text, Shape::NeswResize),
+    (Shape::Text, Shape::NwseResize),
+    (Shape::Text, Shape::ColResize),
     (Shape::ZoomIn, Shape::ZoomOut),
 ];
 

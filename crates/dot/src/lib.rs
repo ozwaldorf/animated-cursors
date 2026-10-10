@@ -20,10 +20,6 @@ impl Theme for Dot {
     const ID: &'static str = "animated_dot_cursors";
     const TITLE: &'static str = "Animated Dot";
 
-    fn hotspot(&self, _: Shape) -> (f32, f32) {
-        (16.0, 16.0)
-    }
-
     fn cursor(&self, shape: Shape) -> Vec<Frame<Parts>> {
         if shape.is_busy() {
             let phase = |index: usize| index as f32 / SPIN_FRAMES as f32;

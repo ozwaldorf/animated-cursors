@@ -1,7 +1,7 @@
 //! Parametric cursor rig.
 //!
-//! Every cursor is a list of keyed parts in design units: a 32x32 grid centered
-//! on the hotspot, with y pointing down. Transitions interpolate the parameters
+//! Every cursor is a list of keyed parts in design units around the hotspot,
+//! with y pointing down. Transitions interpolate the parameters
 //! of parts sharing a key; unshared parts grow from or collapse into an anchor.
 
 use cursor_core::Shape;

@@ -23,16 +23,6 @@ pub const MAGENTA: u32 = 0xc51ef0;
 pub const VIOLET: u32 = 0x7c4dff;
 pub const CHARCOAL: u32 = 0x37474f;
 
-/// Hotspot inside the 32x32 design cell: drops click at their tip, the rest
-/// at their center.
-pub fn hotspot(shape: Shape) -> P {
-    match shape {
-        Shape::Default | Shape::Progress => (8.0, 8.0),
-        Shape::Pointer => (16.0, 8.0),
-        _ => (16.0, 16.0),
-    }
-}
-
 /// Teardrop with its tip on the hotspot, leaning like an arrow.
 fn teardrop(color: Color) -> Drop {
     cone((0.7, 0.9), 0.9, (7.5, 10.5), 6.0, color)

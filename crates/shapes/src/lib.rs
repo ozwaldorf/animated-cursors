@@ -19,11 +19,6 @@ impl Theme for Shapes {
     const ID: &'static str = "animated_shapes_cursors";
     const TITLE: &'static str = "Animated Shapes";
 
-    /// Every cursor clicks at the arrow tip; shapes sit down and to the right.
-    fn hotspot(&self, _: Shape) -> (f32, f32) {
-        (8.0, 8.0)
-    }
-
     fn cursor(&self, shape: Shape) -> Vec<Frame<Scene>> {
         cursors::frames(shape).into_iter().map(|(scene, delay)| Frame { scene, delay }).collect()
     }

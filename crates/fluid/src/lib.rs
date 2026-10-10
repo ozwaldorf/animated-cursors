@@ -20,10 +20,6 @@ impl Theme for Fluid {
     const ID: &'static str = "animated_fluid_cursors";
     const TITLE: &'static str = "Animated Fluid";
 
-    fn hotspot(&self, shape: Shape) -> (f32, f32) {
-        cursors::hotspot(shape)
-    }
-
     fn cursor(&self, shape: Shape) -> Vec<Frame<Scene>> {
         cursors::frames(shape).into_iter().map(|(scene, delay)| Frame { scene, delay }).collect()
     }

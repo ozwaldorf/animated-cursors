@@ -163,8 +163,10 @@ continuously; wait drops are flung out and fall back in twice per turn.
 A new theme is a crate with a `Theme` implementation, a three-line `main.rs`
 calling `cursor_core::cli::run`, and a test calling `cursor_core::check::theme`.
 
-The checks require exact hotspots at every size, transition endpoints identical
-to the ordinary cursors, nothing clipped at the canvas edge, and working aliases.
+The checks require images exactly their nominal size with the hotspot inside,
+a hotspot fixed across each cursor's frames, transition endpoints identical
+to the ordinary cursors, nothing clipped at the image edge, the largest frame
+filling the image, and working aliases.
 
 ## Build
 
@@ -183,6 +185,7 @@ cargo test
 cargo run --release -p shapes-cursors -- --output build/shapes --preview previews/shapes
 cargo run --release -p dot-cursors -- --output build/dot --preview previews/dot
 cargo run --release -p fluid-cursors -- --output build/fluid --preview previews/fluid
+cargo run --release -p dot-cursors -- --output build/dot-small --sizes 24,32
 ```
 
 ## Niri
@@ -193,14 +196,17 @@ theme with Home Manager's `home.pointerCursor` and in Niri:
 ```kdl
 cursor {
     xcursor-theme "animated_shapes_cursors"
-    xcursor-size 24
+    xcursor-size 48
 }
 ```
 
 A transition is an ordinary animated Xcursor file named
 `cursors/<from>-to-<to>` with Wayland cursor-shape names, 24 frames at 5 ms.
 One file serves both directions, and shape aliases share it through symlinks.
-Cursors are drawn 1.5 times their nominal size on canvases enlarged to match
-(36 px at size 24), so they read like conventional themes. Transition frames
-use a canvas twice that, centered on the hotspot.
+Every image is exactly its nominal size, 48 and 72 px by default (`--sizes`
+chooses others). Each theme is drawn at one scale, fitted so its largest frame,
+shadow, idle gestures and transitions included, fills the image less a 2 px
+margin. Each cursor's hotspot is placed to center all of its frames, and
+transition frames between the endpoints center themselves, carrying their own
+hotspots.
 Only applications using the cursor-shape protocol get transitions.

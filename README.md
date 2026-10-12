@@ -23,17 +23,25 @@ Every theme can be built in any palette:
 Every color comes from a palette file per theme, `crates/<theme>/colors/<name>.conf`,
 with one `role = #rrggbb` line per color role and `#` comments. Three are
 bundled: `carburetor` (the default), `catppuccin` (Mocha) and `gruvbox` (dark).
-A theme refuses a palette that misses a role or names an unknown one, and the
-tests generate and check every bundled palette.
+A theme refuses a palette that misses a role or names an unknown one. `cargo
+test` checks every bundled palette, or only `CURSOR_PALETTE` (a name or file)
+when set; each flake package checks just its own crate in the palette it
+builds.
 
 Choose one with `--palette NAME`, or pass a path to your own file. The theme
-name in `index.theme` carries the palette, e.g. `Animated Fluid (gruvbox)`. To
-recolor a flake build, patch the bundled file:
+name in `index.theme` carries the palette, e.g. `Animated Fluid (gruvbox)`.
+
+Flake packages take a bundled `palette` and a `colors` attrset of roles to
+replace in it:
 
 ```nix
-animated-cursors.packages.${system}.fluid.overrideAttrs (old: {
-  patches = (old.patches or [ ]) ++ [ ./fluid-colors.patch ];
-})
+animated-cursors.packages.${system}.fluid.override {
+  palette = "catppuccin";
+  colors = {
+    arrow = "#f5c2e7";
+    link = "#f5c2e7";
+  };
+}
 ```
 
 ## Themes

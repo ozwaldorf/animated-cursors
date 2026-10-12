@@ -44,10 +44,15 @@ fn span(image: &Image) -> u32 {
     x1.saturating_sub(x0).max(y1.saturating_sub(y0))
 }
 
-/// Generates the theme in every bundled palette and checks each.
+/// Generates the theme in every bundled palette, or only in `CURSOR_PALETTE`
+/// (a name or file) when set, and checks each.
 pub fn theme<T: Theme>() {
-    for (name, _) in T::PALETTES {
-        generated(&T::new(Palette::load::<T>(name).unwrap()));
+    let choices = match std::env::var("CURSOR_PALETTE") {
+        Ok(choice) => vec![choice],
+        Err(_) => T::PALETTES.iter().map(|(name, _)| name.to_string()).collect(),
+    };
+    for choice in choices {
+        generated(&T::new(Palette::load::<T>(&choice).unwrap()));
     }
 }
 

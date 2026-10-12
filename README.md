@@ -49,14 +49,13 @@ animated-cursors.packages.${system}.fluid.override {
 ### Shapes (`animated_shapes_cursors`)
 
 Material 3 Expressive inspired. Every cursor is a shape from the M3 shape
-library (rounded polygons, cookies, clovers, sunny and soft-burst stars,
-flowers, pills) in its own palette accent, with glyphs in the palette's text
-color:
+library (rounded polygons, cookies, sunny and soft-burst stars, flowers,
+pills) in its own palette accent, with glyphs in the palette's text color:
 
 | Cursor | Shape | Carburetor color |
 | --- | --- | --- |
 | Arrow | Rounded triangle, tip on the hotspot | Lavender |
-| Link | Four-leaf clover with a center dot | Peach |
+| Link | The arrow with a dot on its body | Peach |
 | Text, vertical text | Pill | Blue |
 | Resize | Pill with chevrons; column resize is a rounded square | Teal |
 | Grab, grabbing | Open 8-petal bloom that closes into a tight cookie | Sapphire, blue |
@@ -67,15 +66,15 @@ color:
 | Zoom | Sunny and 12-sided cookie with plus and minus | Pink |
 
 Each cursor rests for 1 to 2 seconds, then plays a short springy idle gesture:
-the arrow nods about its tip, the clover, bloom, flower and zoom shapes twirl
-by one of their symmetries (so the loop closes seamlessly), resize chevrons
-nudge outward, grabbing squeezes, no-drop and not-allowed shake, and the
-crosshair pulses. Busy cursors loop the loading indicator instead, one shape
+the arrow nods about its tip, the link arrow taps, the bloom, flower and zoom
+shapes twirl by one of their symmetries (so the loop closes seamlessly), resize
+chevrons nudge outward, grabbing squeezes, no-drop and not-allowed shake, and
+the crosshair pulses. Busy cursors loop the loading indicator instead, one shape
 every 0.7 seconds.
 
 Every cursor clicks at the arrow tip, and every shape sits centered on the
 arrow body, so morphs happen in place. For centered shapes such as the
-clover, pill or octagon, the click point is at their upper left.
+bloom, pill or octagon, the click point is at their upper left.
 
 Shapes are polar outlines (radii at evenly spaced angles), so any two morph
 by interpolating radii. Transitions spring with a slight overshoot and twist,

@@ -5,9 +5,7 @@ use cursor_core::color::{Color, mix as mix_color};
 use cursor_core::motion::{bump, ease, polar, spring, window, wobble};
 use cursor_core::{Palette, Shape};
 
-use crate::outline::{
-    Outline, P, circle, clover, cookie, custom, flower, pentagon, pill, polygon, star, stretch, sunny,
-};
+use crate::outline::{Outline, P, circle, cookie, custom, flower, pentagon, pill, polygon, star, stretch, sunny};
 use crate::scene::{Blob, Glyph, Scene};
 
 fn blob(center: P, outline: Outline, rotation: f32, color: Color) -> Blob {
@@ -34,11 +32,11 @@ fn chevron(key: &'static str, tip: P, angle: f32, arm: f32) -> Glyph {
 /// the arrow stay in place and the hotspot stays at the arrow tip.
 const ANCHOR: P = (7.2, 7.2);
 
-fn arrow(colors: &Palette) -> Blob {
+fn arrow(color: Color) -> Blob {
     let center = ANCHOR;
     let corners = [((0.0, 0.0), 1.0), ((15.5, 6.0), 3.0), ((6.0, 15.5), 3.0)];
     let local: Vec<(P, f32)> = corners.iter().map(|&((x, y), r)| ((x - center.0, y - center.1), r)).collect();
-    blob(center, custom(&local), 0.0, colors["arrow"])
+    blob(center, custom(&local), 0.0, color)
 }
 
 /// Pill along `angle` with chevrons pointing out of both ends.
@@ -92,10 +90,10 @@ fn indicator(colors: &Palette, u: f32, r: f32, center: P) -> Blob {
     Blob { center, outline: a.mix(&b, spring(progress)), rotation: 360.0 * u, color }
 }
 
-/// Moves a layout into place: the arrow and progress already sit at the tip,
-/// every other shape moves to the anchor.
+/// Moves a layout into place: the arrows already sit at the tip, every other
+/// shape moves to the anchor.
 fn place(shape: Shape, scene: Scene) -> Scene {
-    if matches!(shape, Shape::Default | Shape::Progress) { scene } else { scene.shift(ANCHOR) }
+    if matches!(shape, Shape::Default | Shape::Pointer | Shape::Progress) { scene } else { scene.shift(ANCHOR) }
 }
 
 pub fn scene(colors: &Palette, shape: Shape, phase: f32) -> Scene {
@@ -125,7 +123,9 @@ fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
     let origin = (0.0, 0.0);
     match shape {
         Shape::Default => rest.about(origin, 9.0 * wobble(u, 1.5), 1.0),
-        Shape::Pointer => rest.spin(90.0 * spring(u)).pulse_glyphs(1.0 + 0.45 * bump(u, 0.1, 0.6)),
+        Shape::Pointer => {
+            rest.about(origin, 0.0, 1.0 - 0.06 * bump(u, 0.0, 0.5)).pulse_glyphs(1.0 + 0.45 * bump(u, 0.1, 0.6))
+        }
         Shape::Text | Shape::VerticalText => rest.about(origin, 0.0, 1.0 + 0.08 * wobble(u, 1.0)),
         Shape::EwResize | Shape::NsResize | Shape::NeswResize | Shape::NwseResize => {
             rest.push_glyphs(1.3 * (bump(u, 0.0, 0.45) + bump(u, 0.5, 0.45)))
@@ -155,18 +155,15 @@ pub fn frames(colors: &Palette, shape: Shape) -> Vec<(Scene, u32)> {
         .collect()
 }
 
-/// Shapes around the origin; the arrow and progress place themselves.
+/// Shapes around the origin; the arrows place themselves.
 fn layout(colors: &Palette, shape: Shape, phase: f32) -> Scene {
     match shape {
-        Shape::Default => Scene { blobs: vec![arrow(colors)], glyphs: vec![] },
+        Shape::Default => Scene { blobs: vec![arrow(colors["arrow"])], glyphs: vec![] },
+        Shape::Pointer => Scene { blobs: vec![arrow(colors["link"])], glyphs: vec![dot("point", (5.6, 5.6), 2.6)] },
         Shape::Progress => {
-            Scene { blobs: vec![arrow(colors), indicator(colors, phase, 3.8, (14.0, 14.0))], glyphs: vec![] }
+            Scene { blobs: vec![arrow(colors["arrow"]), indicator(colors, phase, 3.8, (14.0, 14.0))], glyphs: vec![] }
         }
         Shape::Wait => Scene { blobs: vec![indicator(colors, phase, 9.5, (0.0, 0.0))], glyphs: vec![] },
-        Shape::Pointer => Scene {
-            blobs: vec![blob((0.0, 0.0), clover(4, 10.0), 45.0, colors["link"])],
-            glyphs: vec![dot("point", (0.0, 0.0), 3.4)],
-        },
         Shape::Text => {
             Scene { blobs: vec![blob((0.0, 0.0), pill(20.0, 4.2, 0.0), 90.0, colors["text"])], glyphs: vec![] }
         }

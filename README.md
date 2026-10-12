@@ -65,22 +65,12 @@ pills) in its own palette accent, with glyphs in the palette's text color:
 | Crosshair | Four triangles around a dot | Surface gray |
 | Zoom | Sunny and 12-sided cookie with plus and minus | Pink |
 
-Each cursor rests for 1 to 2 seconds, then plays a short springy idle gesture:
-the arrow nods about its tip, the link arrow taps, the bloom, flower and zoom
-shapes twirl by one of their symmetries (so the loop closes seamlessly), resize
-chevrons nudge outward, grabbing squeezes, no-drop and not-allowed shake, and
-the crosshair pulses. Busy cursors loop the loading indicator instead, one shape
-every 0.7 seconds.
-
 Every cursor clicks at the arrow tip, and every shape sits centered on the
 arrow body, so morphs happen in place. For centered shapes such as the
 bloom, pill or octagon, the click point is at their upper left.
 
 Shapes are polar outlines (radii at evenly spaced angles), so any two morph
-by interpolating radii. Transitions spring with a slight overshoot and twist,
-sweep color through OKLab, morph glyphs that share a key, and pop the rest in
-or out.
-
+by interpolating radii, and glyphs that share a key morph into each other.
 
 #### Cursors
 
@@ -103,16 +93,9 @@ or out.
 
 ### Dot (`animated_dot_cursors`)
 
-Minimal dots and rings built from keyed bars, chevrons and arcs. Shared parts
-stretch, slide and rotate between shapes; parts present on one side grow from
-an anchor, ripple in, or spiral out. A transition played backwards is exactly
-the opposite transition, which the tests check for every pair.
-
-Idle loops rest, then play a small gesture: the dot beats twice, the fingertip
-pointer taps, carets breathe, resize chevrons nudge, fingers lift off the palm
-one by one, the fist squeezes, badges spin or shake, the not-allowed slash
-flips end over end, crosshair ticks pulse inward, and the zoom glyph turns.
-
+Minimal dots and rings built from keyed bars, chevrons and arcs; parts sharing
+a key morph between shapes. A transition played backwards is exactly the
+opposite transition, which the tests check for every pair.
 
 #### Cursors
 
@@ -140,36 +123,25 @@ cones) summed into one distance field through an exponential smooth union, so
 nearby drops melt together with soft necks. Carved drops cut glyphs out of the
 liquid, showing the border color, and inlaid drops refill holes, as in the zoom lens and the ban
 sign. In the default Carburetor palette every cursor is the same blue, busy
-drops use its lighter blues, and green and red mark copy and refusal. Where
+drops split off a lighter sky, and green and red mark copy and refusal. Where
 differently colored drops meet, their colors blend:
 
 | Cursor | Drops | Carburetor color |
 | --- | --- | --- |
 | Arrow | Teardrop, tip on the hotspot | Blue |
 | Link | Upright teardrop with a carved hole | Blue |
-| Text, vertical text | Stem melting into two serifs | Blue |
+| Text, vertical text | Stem with two-armed serifs that fold into resize arrowheads | Blue |
 | Resize | Bar with chevron arrowheads | Blue |
 | Grab, grabbing | Palm with a thumb and three fingers that pull in to knuckles | Blue |
 | Copy, no drop | Fist with a badge drop carved with a plus or a slash | Blue, green, red |
 | Not allowed | Ring with an inlaid slash | Red |
-| Progress | Teardrop with two drops circling its belly | Blue, sapphire, sky |
-| Wait | Core with three orbiting drops | Blue, sapphire, sky |
+| Progress | Teardrop with a small dividing cell at its belly | Blue, sky |
+| Wait | Cell that splits in two and merges back | Blue, sky |
 | Crosshair | Dot and four ticks | Blue |
 | Zoom | Lens ring with an inlaid plus or minus, and a handle | Blue |
 
-Drops sharing a key flow into each other while the union gets briefly gooier
-mid-transition. Drops present on one side bud out of an anchor or melt back
-into it, with their border shrinking along with them. A transition played
-backwards is exactly the opposite transition, which the tests check for every
-pair.
-
-Idle loops rest, then play a liquid gesture: a drip sags from the arrow and
-springs back with a jiggle, the link drop taps, a bead runs down the text
-stem, arrowheads pull off the resize bar, fingers stretch one after another,
-the fist squeezes, the copy badge tugs away while its plus turns, the no-drop
-badge shakes, the ban sign wobbles like jelly, crosshair ticks fall into the
-center and pull back out, and the zoom glyph turns. Progress drops circle
-continuously; wait drops are flung out and fall back in twice per turn.
+Drops sharing a key flow into each other. A transition played backwards is
+exactly the opposite transition, which the tests check for every pair.
 
 #### Cursors
 

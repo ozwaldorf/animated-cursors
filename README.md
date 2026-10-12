@@ -241,8 +241,9 @@ has a short spec for adding support to a compositor, and a patch for Niri
 A transition is an ordinary animated Xcursor file named
 `cursors/<from>-to-<to>` with Wayland cursor-shape names, 24 frames at 5 ms.
 One file serves both directions, and shape aliases share it through symlinks.
-Every image is exactly its nominal size, 48 and 72 px by default (`--sizes`
-chooses others). Each theme is drawn at one scale, fitted so its largest frame,
+Every image is exactly its nominal size, 32, 48, 64, 72 and 96 px by default
+(`--sizes` chooses others), covering sizes 32 and 48 at output scales 1, 1.5
+and 2. Each theme is drawn at one scale, fitted so its largest frame,
 shadow, idle gestures and transitions included, fills the image less a 2 px
 margin. Each cursor's hotspot is placed to center all of its frames, and
 transition frames between the endpoints center themselves, carrying their own

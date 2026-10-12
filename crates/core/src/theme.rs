@@ -21,7 +21,7 @@ use crate::shape::{LEGACY_ALIASES, PAIRS, Shape};
 use crate::xcursor::{Image, encode};
 
 /// Nominal sizes built by default.
-pub const SIZES: [u32; 2] = [48, 72];
+pub const SIZES: [u32; 5] = [32, 48, 64, 72, 96];
 pub const TRANSITION_FRAMES: usize = 24;
 pub const TRANSITION_DELAY: u32 = 5;
 /// Pixels kept clear around the largest frame.

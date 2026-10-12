@@ -25,13 +25,14 @@ fn rotated(drops: Drops, degrees: f32) -> Drops {
 
 const ARROWS: [[&str; 2]; 2] = [["arrow0_l", "arrow0_r"], ["arrow1_l", "arrow1_r"]];
 
-/// Chevrons pointing along 0 and 180 degrees, tips `reach` from the origin.
-/// Each arm starts at its tip.
-fn chevrons(reach: f32, arm: f32, color: Color) -> Drops {
+/// Two-armed ends along 0 and 180 degrees, tips `reach` from the origin, arms
+/// turned `spread` degrees back from the axis: 135 makes arrowheads, 90 makes
+/// serifs. Each arm starts at its tip, so serifs fold into arrowheads.
+fn ends(reach: f32, arm: f32, spread: f32, color: Color) -> Drops {
     let mut drops = Drops::new();
     for (keys, angle) in ARROWS.into_iter().zip([0.0, 180.0]) {
         let tip = polar(0.0, 0.0, reach, angle);
-        for (key, turn) in keys.into_iter().zip([135.0, -135.0]) {
+        for (key, turn) in keys.into_iter().zip([spread, -spread]) {
             drops.push((key, capsule(tip, polar(tip.0, tip.1, arm, angle + turn), 1.15, color)));
         }
     }
@@ -42,7 +43,15 @@ fn chevrons(reach: f32, arm: f32, color: Color) -> Drops {
 fn resize(colors: &Palette, angle: f32) -> Drops {
     let color = colors["resize"];
     let mut drops = vec![("body", capsule((-8.5, 0.0), (8.5, 0.0), 1.15, color))];
-    drops.extend(chevrons(9.5, 4.4, color));
+    drops.extend(ends(9.5, 4.4, 135.0, color));
+    rotated(drops, angle)
+}
+
+/// Stem along `angle` with a serif at each end.
+fn caret(colors: &Palette, angle: f32) -> Drops {
+    let color = colors["text"];
+    let mut drops = vec![("body", capsule((-7.5, 0.0), (7.5, 0.0), 1.25, color))];
+    drops.extend(ends(8.5, 3.0, 90.0, color));
     rotated(drops, angle)
 }
 
@@ -87,29 +96,30 @@ fn magnifier(colors: &Palette) -> Drops {
     drops
 }
 
-const ORBIT: [&str; 3] = ["orbit0", "orbit1", "orbit2"];
+/// A cell of `scale` at `center` that splits in two and merges back twice a
+/// turn while turning half a turn, so the halves have swapped when it loops.
+fn mitosis(colors: &Palette, phase: f32, center: P, scale: f32, keys: [&'static str; 2]) -> Drops {
+    let split = (0.5 - 0.5 * (TAU * 2.0 * phase).cos()).powf(0.8);
+    let radius = scale * (4.2 - 1.1 * split);
+    keys.into_iter()
+        .zip([(0.0, colors["busy"]), (180.0, colors["split"])])
+        .map(|(key, (turn, color))| {
+            let at = polar(center.0, center.1, scale * 5.2 * split, 180.0 * phase + turn);
+            (key, blob(at, radius, color))
+        })
+        .collect()
+}
 
-/// Two drops circling the teardrop's belly, dipping in and out of it.
+/// The teardrop with a small dividing cell at its belly.
 fn progress(colors: &Palette, phase: f32) -> Drops {
-    let center = (12.0, 14.5);
     let mut drops = vec![("body", teardrop(colors["arrow"]))];
-    for (i, key) in ORBIT.into_iter().take(2).enumerate() {
-        let at = polar(center.0, center.1, 3.0, 360.0 * phase + 180.0 * i as f32 - 135.0);
-        drops.push((key, blob(at, 1.8, colors[key]).anchored(BELLY)));
-    }
+    let cell = mitosis(colors, phase, (14.0, 15.0), 0.5, ["bud", "split"]);
+    drops.extend(cell.into_iter().map(|(key, drop)| (key, drop.anchored(BELLY))));
     drops
 }
 
-/// Three drops orbiting a core, each falling in and flung out twice a turn.
 fn wait(colors: &Palette, phase: f32) -> Drops {
-    let mut drops = vec![("body", blob((0.0, 0.0), 3.0, colors["busy"]))];
-    for (i, key) in ORBIT.into_iter().enumerate() {
-        let offset = i as f32 / 3.0;
-        let reach = 6.5 + 2.5 * (TAU * (2.0 * phase + offset)).cos();
-        let at = polar(0.0, 0.0, reach, 360.0 * (phase + offset) - 90.0);
-        drops.push((key, blob(at, 2.5, colors[key])));
-    }
-    drops
+    mitosis(colors, phase, (0.0, 0.0), 1.0, ["body", "split"])
 }
 
 /// Drops of a cursor; `phase` in [0, 1) drives busy loops.
@@ -125,15 +135,8 @@ pub fn layout(colors: &Palette, shape: Shape, phase: f32) -> Drops {
                 ("hole", blob((0.0, 10.0), 2.0, color).carve().own()),
             ]
         }
-        Shape::Text | Shape::VerticalText => {
-            let color = colors["text"];
-            let drops = vec![
-                ("body", capsule((0.0, -7.5), (0.0, 7.5), 1.25, color)),
-                ("cap0", capsule((-3.0, -8.5), (3.0, -8.5), 1.2, color).own()),
-                ("cap1", capsule((-3.0, 8.5), (3.0, 8.5), 1.2, color).own()),
-            ];
-            if shape == Shape::Text { drops } else { rotated(drops, 90.0) }
-        }
+        Shape::Text => caret(colors, 90.0),
+        Shape::VerticalText => caret(colors, 0.0),
         Shape::EwResize => resize(colors, 0.0),
         Shape::NsResize => resize(colors, 90.0),
         Shape::NeswResize => resize(colors, -45.0),
@@ -141,7 +144,7 @@ pub fn layout(colors: &Palette, shape: Shape, phase: f32) -> Drops {
         Shape::ColResize => {
             let color = colors["resize"];
             let mut drops = vec![("body", capsule((0.0, -8.5), (0.0, 8.5), 1.25, color))];
-            drops.extend(chevrons(10.0, 3.8, color));
+            drops.extend(ends(10.0, 3.8, 135.0, color));
             drops
         }
         Shape::Grab => hand(4.4, 11.5, 2.1, 1.7, colors["grab"]),
@@ -179,7 +182,7 @@ pub fn scene(colors: &Palette, shape: Shape, phase: f32) -> Scene {
     Scene::new(layout(colors, shape, phase))
 }
 
-const BUSY_FRAMES: usize = 40;
+const BUSY_FRAMES: usize = 64;
 const BUSY_DELAY: u32 = 30;
 
 /// Frames of an ordinary cursor: a busy loop, or rest then an idle gesture.

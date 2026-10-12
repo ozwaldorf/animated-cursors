@@ -4,10 +4,10 @@
 use std::f32::consts::PI;
 
 use cursor_core::Shape;
-use cursor_core::motion::{bump, ease, lerp, polar, spring, window, wobble};
+use cursor_core::motion::{bump, polar, spring, window, wobble};
 
 use crate::cursors::{BADGE, BELLY, PALM};
-use crate::scene::{Drop, P, Scene, Warp, blob};
+use crate::scene::{Drop, P, Scene, Warp};
 
 /// Gesture frame length in milliseconds.
 pub const STEP: u32 = 30;
@@ -66,26 +66,13 @@ fn twice(u: f32) -> f32 {
 pub fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
     let origin = (0.0, 0.0);
     match shape {
-        // A drop sags from the belly and springs back with a jiggle.
-        Shape::Default => {
-            let body = rest.get("body").expect("teardrop");
-            let sag = bump(window(u, (0.0, 0.6)), 0.0, 1.0);
-            let drip = blob((BELLY.0, BELLY.1 + 3.5 + 4.5 * sag), 1.9 * sag.sqrt(), body.color);
-            let mut scene = rest;
-            scene.drops.push(("drip", drip));
-            squashed(scene, BELLY, 90.0, 0.06 * wobble(window(u, (0.45, 1.0)), 2.0))
-        }
+        // The belly wobbles like jelly, as if poked.
+        Shape::Default => squashed(rest, BELLY, 35.0, 0.1 * wobble(u, 2.0)),
         // Two taps, flattening against the tip.
         Shape::Pointer => squashed(rest, origin, 90.0, 0.1 * twice(u)),
-        // A bead of liquid runs down the stem.
-        Shape::Text | Shape::VerticalText => {
-            let stem = rest.get("body").expect("stem");
-            let along = ease(u);
-            let at = (lerp(stem.a.0, stem.b.0, along), lerp(stem.a.1, stem.b.1, along));
-            let mut scene = rest;
-            scene.drops.push(("bead", blob(at, 2.0 * (PI * u).sin(), stem.color)));
-            scene
-        }
+        // The caret wobbles like jelly along its stem.
+        Shape::Text => squashed(rest, origin, 90.0, 0.08 * wobble(u, 2.0)),
+        Shape::VerticalText => squashed(rest, origin, 0.0, 0.08 * wobble(u, 2.0)),
         // Arrowheads pull off the ends of the bar and snap back.
         Shape::EwResize | Shape::NsResize | Shape::NeswResize | Shape::NwseResize | Shape::ColResize => {
             let pull = 0.9 * twice(u);

@@ -83,16 +83,25 @@ fn badged(colors: &Palette, color: Color, glyph: &[(&'static str, P, P)]) -> Dro
     drops
 }
 
-/// Ring of `radius` around a carved hole, as in the zoom lens and the ban sign.
+/// Ring of `radius` around a carved hole, as in the ban sign.
 fn ring(radius: f32, hole: f32, color: Color) -> Drops {
     vec![("body", blob((0.0, 0.0), radius, color)), ("hole", blob((0.0, 0.0), hole, color).carve())]
 }
 
-fn magnifier(colors: &Palette) -> Drops {
+/// Solid lens of `radius` with a handle and a carved bar, or a carved plus
+/// when `plus`.
+fn magnifier(colors: &Palette, radius: f32, plus: bool) -> Drops {
     let color = colors["zoom"];
-    let mut drops = ring(7.8, 5.0, color);
-    drops.push(("handle", cone((5.6, 5.6), 2.5, (10.5, 10.5), 2.1, color).own()));
-    drops.push(("plus_h", capsule((-2.4, 0.0), (2.4, 0.0), 1.0, color).inlay()));
+    let start = polar(0.0, 0.0, 0.72 * radius, 45.0);
+    let arm = 0.45 * radius;
+    let mut drops = vec![
+        ("body", blob((0.0, 0.0), radius, color)),
+        ("handle", cone(start, 2.5, (start.0 + 4.9, start.1 + 4.9), 2.1, color).own()),
+        ("plus_h", capsule((-arm, 0.0), (arm, 0.0), 1.1, color).carve()),
+    ];
+    if plus {
+        drops.push(("plus_v", capsule((0.0, -arm), (0.0, arm), 1.1, color).carve()));
+    }
     drops
 }
 
@@ -169,12 +178,8 @@ pub fn layout(colors: &Palette, shape: Shape, phase: f32) -> Drops {
             }
             drops
         }
-        Shape::ZoomIn => {
-            let mut drops = magnifier(colors);
-            drops.push(("plus_v", capsule((0.0, -2.4), (0.0, 2.4), 1.0, colors["zoom"]).inlay()));
-            drops
-        }
-        Shape::ZoomOut => magnifier(colors),
+        Shape::ZoomIn => magnifier(colors, 8.2, true),
+        Shape::ZoomOut => magnifier(colors, 6.6, false),
     }
 }
 

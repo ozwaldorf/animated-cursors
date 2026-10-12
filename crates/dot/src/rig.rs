@@ -104,12 +104,18 @@ fn fist() -> Parts {
     hand(2.0, 10.0, 5.0, 4.5)
 }
 
-fn magnifier() -> Parts {
-    vec![
-        ("lens", ring(7.0, 2.5)),
-        ("handle", bar(7.5, 7.5, 8.5, 3.5, Some(45.0))),
-        ("plus_h", own(bar(0.0, 0.0, 7.0, 2.5, Some(0.0)))),
-    ]
+/// Lens of `radius` with a handle and a bar, or a plus when `plus`.
+fn magnifier(radius: f32, plus: bool) -> Parts {
+    let (x, y) = polar(0.0, 0.0, radius + 3.6, 45.0);
+    let mut parts = vec![
+        ("lens", ring(radius, 2.5)),
+        ("handle", bar(x, y, 8.5, 3.5, Some(45.0))),
+        ("plus_h", own(bar(0.0, 0.0, radius, 2.5, Some(0.0)))),
+    ];
+    if plus {
+        parts.push(("plus_v", own(bar(0.0, 0.0, radius, 2.5, Some(90.0)))));
+    }
+    parts
 }
 
 /// Parts of this shape; `phase` in [0, 1) rotates spinners.
@@ -152,12 +158,8 @@ pub fn parts(shape: Shape, phase: f32) -> Parts {
             }
             parts
         }
-        Shape::ZoomIn => {
-            let mut parts = magnifier();
-            parts.push(("plus_v", own(bar(0.0, 0.0, 7.0, 2.5, Some(90.0)))));
-            parts
-        }
-        Shape::ZoomOut => magnifier(),
+        Shape::ZoomIn => magnifier(7.5, true),
+        Shape::ZoomOut => magnifier(5.8, false),
     }
 }
 

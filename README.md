@@ -76,10 +76,10 @@ by interpolating radii, and glyphs that share a key morph into each other.
 
 | | | | | |
 | --- | --- | --- | --- | --- |
-| <img src="previews/shapes/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/shapes/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/shapes/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | <img src="previews/shapes/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/shapes/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
-| <img src="previews/shapes/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/shapes/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/shapes/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/shapes/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> | <img src="previews/shapes/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> |
-| <img src="previews/shapes/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/shapes/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/shapes/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/shapes/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/shapes/text.gif" alt="text" width="96"><br><sub>text</sub> |
-| <img src="previews/shapes/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/shapes/wait.gif" alt="wait" width="96"><br><sub>wait</sub> | <img src="previews/shapes/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/shapes/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | |
+| <img src="previews/shapes/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/shapes/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/shapes/text.gif" alt="text" width="96"><br><sub>text</sub> | <img src="previews/shapes/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/shapes/wait.gif" alt="wait" width="96"><br><sub>wait</sub> |
+| <img src="previews/shapes/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/shapes/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/shapes/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/shapes/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/shapes/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> |
+| <img src="previews/shapes/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> | <img src="previews/shapes/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/shapes/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | <img src="previews/shapes/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/shapes/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
+| <img src="previews/shapes/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/shapes/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/shapes/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/shapes/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | |
 
 #### Transitions
 
@@ -101,10 +101,10 @@ opposite transition, which the tests check for every pair.
 
 | | | | | |
 | --- | --- | --- | --- | --- |
-| <img src="previews/dot/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/dot/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/dot/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | <img src="previews/dot/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/dot/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
-| <img src="previews/dot/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/dot/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/dot/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/dot/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> | <img src="previews/dot/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> |
-| <img src="previews/dot/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/dot/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/dot/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/dot/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/dot/text.gif" alt="text" width="96"><br><sub>text</sub> |
-| <img src="previews/dot/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/dot/wait.gif" alt="wait" width="96"><br><sub>wait</sub> | <img src="previews/dot/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/dot/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | |
+| <img src="previews/dot/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/dot/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/dot/text.gif" alt="text" width="96"><br><sub>text</sub> | <img src="previews/dot/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/dot/wait.gif" alt="wait" width="96"><br><sub>wait</sub> |
+| <img src="previews/dot/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/dot/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/dot/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/dot/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/dot/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> |
+| <img src="previews/dot/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> | <img src="previews/dot/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/dot/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | <img src="previews/dot/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/dot/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
+| <img src="previews/dot/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/dot/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/dot/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/dot/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | |
 
 #### Transitions
 
@@ -121,7 +121,7 @@ opposite transition, which the tests check for every pair.
 Liquid metaballs. Every cursor is a few drops (circles, capsules and round
 cones) summed into one distance field through an exponential smooth union, so
 nearby drops melt together with soft necks. Carved drops cut glyphs out of the
-liquid, showing the border color, and inlaid drops refill holes, as in the zoom lens and the ban
+liquid, showing the border color, and inlaid drops refill holes, as in the ban
 sign. In the default Carburetor palette every cursor is the same blue, busy
 drops split off a lighter sky, and green and red mark copy and refusal. Where
 differently colored drops meet, their colors blend:
@@ -138,7 +138,7 @@ differently colored drops meet, their colors blend:
 | Progress | Teardrop with a small dividing cell at its belly | Blue, sky |
 | Wait | Cell that splits in two and merges back | Blue, sky |
 | Crosshair | Dot and four ticks | Blue |
-| Zoom | Lens ring with an inlaid plus or minus, and a handle | Blue |
+| Zoom | Lens with a handle, carved with a plus or minus; it shrinks to zoom out | Blue |
 
 Drops sharing a key flow into each other. A transition played backwards is
 exactly the opposite transition, which the tests check for every pair.
@@ -147,10 +147,10 @@ exactly the opposite transition, which the tests check for every pair.
 
 | | | | | |
 | --- | --- | --- | --- | --- |
-| <img src="previews/fluid/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/fluid/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/fluid/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | <img src="previews/fluid/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/fluid/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
-| <img src="previews/fluid/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/fluid/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/fluid/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/fluid/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> | <img src="previews/fluid/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> |
-| <img src="previews/fluid/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/fluid/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/fluid/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/fluid/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/fluid/text.gif" alt="text" width="96"><br><sub>text</sub> |
-| <img src="previews/fluid/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/fluid/wait.gif" alt="wait" width="96"><br><sub>wait</sub> | <img src="previews/fluid/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/fluid/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | |
+| <img src="previews/fluid/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/fluid/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/fluid/text.gif" alt="text" width="96"><br><sub>text</sub> | <img src="previews/fluid/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/fluid/wait.gif" alt="wait" width="96"><br><sub>wait</sub> |
+| <img src="previews/fluid/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/fluid/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/fluid/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/fluid/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/fluid/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> |
+| <img src="previews/fluid/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> | <img src="previews/fluid/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/fluid/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | <img src="previews/fluid/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/fluid/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
+| <img src="previews/fluid/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/fluid/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/fluid/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/fluid/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | |
 
 #### Transitions
 

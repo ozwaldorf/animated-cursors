@@ -89,7 +89,7 @@
         themes
         // {
           niri = pkgs.niri.overrideAttrs (old: {
-            patches = (old.patches or [ ]) ++ [ ./patches/niri-cursor-transitions.patch ];
+            patches = (old.patches or [ ]) ++ [ ./patches/niri.patch ];
             doCheck = true;
             cargoTestFlags = [
               "--lib"

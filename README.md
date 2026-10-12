@@ -1,7 +1,7 @@
 # Animated Cursors
 
 Parametric Xcursor themes designed for reversible cursor transitions in a
-patched Niri. Every cursor is drawn from code, so transitions interpolate the
+patched compositor ([Niri](patches/README.md#niri) for now). Every cursor is drawn from code, so transitions interpolate the
 design itself rather than cross-fading images. Unpatched compositors and X11
 applications see ordinary (animated) Xcursor themes.
 
@@ -232,17 +232,11 @@ cargo run --release -p fluid-cursors -- --output build/fluid-mine --palette my-c
 cargo run --release -p fluid-cursors -- --sheet previews/palettes/fluid-gruvbox.gif --palette gruvbox
 ```
 
-## Niri
+## Compositor support
 
-Apply `patches/niri-cursor-transitions.patch` to Niri 26.04, then select a
-theme with Home Manager's `home.pointerCursor` and in Niri:
-
-```kdl
-cursor {
-    xcursor-theme "animated_shapes_cursors"
-    xcursor-size 48
-}
-```
+Transitions need a compositor that plays them. [`patches/`](patches/README.md)
+has a short spec for adding support to a compositor, and a patch for Niri
+26.04 as an example.
 
 A transition is an ordinary animated Xcursor file named
 `cursors/<from>-to-<to>` with Wayland cursor-shape names, 24 frames at 5 ms.
@@ -253,10 +247,6 @@ shadow, idle gestures and transitions included, fills the image less a 2 px
 margin. Each cursor's hotspot is placed to center all of its frames, and
 transition frames between the endpoints center themselves, carrying their own
 hotspots.
-Asking for either endpoint mid-transition reverses it in place; any other
-cursor is queued, and only the latest queued request plays once the current
-transition finishes.
-Only applications using the cursor-shape protocol get transitions.
 
 ## License
 

@@ -1,40 +1,23 @@
 //! Each cursor as a scene of M3 shapes and white glyphs, in design units
 //! with the hotspot at the origin.
 
-use cursor_core::Shape;
-use cursor_core::color::{Color, hex, mix as mix_color};
+use cursor_core::color::{Color, mix as mix_color};
 use cursor_core::motion::{bump, ease, polar, spring, window, wobble};
+use cursor_core::{Palette, Shape};
 
 use crate::outline::{
     Outline, P, circle, clover, cookie, custom, flower, pentagon, pill, polygon, star, stretch, sunny,
 };
 use crate::scene::{Blob, Glyph, Scene};
 
-fn palette(rgb: u32) -> Color {
-    hex(rgb)
-}
-
-const VIOLET: u32 = 0x7c4dff;
-const INDIGO: u32 = 0x3d5afe;
-const CORAL: u32 = 0xff5e57;
-const TEAL: u32 = 0x00a693;
-const SKY: u32 = 0x448aff;
-const NAVY: u32 = 0x1a56d6;
-const GREEN: u32 = 0x00b85c;
-const RED: u32 = 0xe53935;
-const AMBER: u32 = 0xffa000;
-const MAGENTA: u32 = 0xc51ef0;
-const CHARCOAL: u32 = 0x263238;
-const WHITE: u32 = 0xffffff;
-
-fn blob(center: P, outline: Outline, rotation: f32, rgb: u32) -> Blob {
-    Blob { center, outline, rotation, color: palette(rgb) }
+fn blob(center: P, outline: Outline, rotation: f32, color: Color) -> Blob {
+    Blob { center, outline, rotation, color }
 }
 
 fn stroke(key: &'static str, points: Vec<P>, width: f32) -> Glyph {
     let n = points.len() as f32;
     let pivot = points.iter().fold((0.0, 0.0), |(x, y), p| (x + p.0 / n, y + p.1 / n));
-    Glyph { key, points, width, color: palette(WHITE), scale: 1.0, pivot }
+    Glyph { key, points, width, scale: 1.0, pivot }
 }
 
 fn dot(key: &'static str, (x, y): P, diameter: f32) -> Glyph {
@@ -51,18 +34,18 @@ fn chevron(key: &'static str, tip: P, angle: f32, arm: f32) -> Glyph {
 /// the arrow stay in place and the hotspot stays at the arrow tip.
 const ANCHOR: P = (7.2, 7.2);
 
-fn arrow() -> Blob {
+fn arrow(colors: &Palette) -> Blob {
     let center = ANCHOR;
     let corners = [((0.0, 0.0), 1.0), ((15.5, 6.0), 3.0), ((6.0, 15.5), 3.0)];
     let local: Vec<(P, f32)> = corners.iter().map(|&((x, y), r)| ((x - center.0, y - center.1), r)).collect();
-    blob(center, custom(&local), 0.0, VIOLET)
+    blob(center, custom(&local), 0.0, colors["arrow"])
 }
 
 /// Pill along `angle` with chevrons pointing out of both ends.
-fn resize(angle: f32) -> Scene {
+fn resize(colors: &Palette, angle: f32) -> Scene {
     let glyphs = [("arrow0", 0.0), ("arrow1", 180.0)]
         .map(|(key, turn)| chevron(key, polar(0.0, 0.0, 7.2, angle + turn), angle + turn, 2.6));
-    Scene { blobs: vec![blob((0.0, 0.0), pill(22.0, 10.0, 0.0), angle, TEAL)], glyphs: glyphs.into() }
+    Scene { blobs: vec![blob((0.0, 0.0), pill(22.0, 10.0, 0.0), angle, colors["resize"])], glyphs: glyphs.into() }
 }
 
 fn plus(arm: f32) -> Vec<Glyph> {
@@ -70,40 +53,42 @@ fn plus(arm: f32) -> Vec<Glyph> {
 }
 
 /// Petals spread open, ready to grab.
-fn bloom() -> Blob {
-    blob((0.0, 0.0), star(8, 10.4, 0.55, 10.0, 0.6, 0.0), 0.0, SKY)
+fn bloom(colors: &Palette) -> Blob {
+    blob((0.0, 0.0), star(8, 10.4, 0.55, 10.0, 0.6, 0.0), 0.0, colors["grab"])
 }
 
 /// The bloom closed tight around what it holds.
-fn fist(rgb: u32) -> Blob {
-    blob((0.0, 0.0), cookie(8, 7.6), 22.5, rgb)
+fn fist(color: Color) -> Blob {
+    blob((0.0, 0.0), cookie(8, 7.6), 22.5, color)
 }
 
 const LOADING: usize = 7;
+const LOAD: [&str; LOADING] = ["load0", "load1", "load2", "load3", "load4", "load5", "load6"];
 
 /// One step of the loading sequence: simple rounded shapes, each in its own
 /// color.
-fn loading(step: usize, r: f32) -> (Outline, u32) {
-    match step % LOADING {
-        0 => (polygon(4, r, 0.22 * r, 45.0), AMBER),
-        1 => (polygon(3, r, 0.22 * r, 0.0), CORAL),
-        2 => (polygon(6, r, 0.2 * r, 0.0), TEAL),
-        3 => (pill(2.0 * r, 1.1 * r, 0.0), VIOLET),
-        4 => (pentagon(r), GREEN),
-        5 => (stretch(&polygon(4, r, 0.2 * r, 0.0), 0.8, 1.1), SKY),
-        _ => (circle(0.85 * r), MAGENTA),
-    }
+fn loading(colors: &Palette, step: usize, r: f32) -> (Outline, Color) {
+    let outline = match step % LOADING {
+        0 => polygon(4, r, 0.22 * r, 45.0),
+        1 => polygon(3, r, 0.22 * r, 0.0),
+        2 => polygon(6, r, 0.2 * r, 0.0),
+        3 => pill(2.0 * r, 1.1 * r, 0.0),
+        4 => pentagon(r),
+        5 => stretch(&polygon(4, r, 0.2 * r, 0.0), 0.8, 1.1),
+        _ => circle(0.85 * r),
+    };
+    (outline, colors[LOAD[step % LOADING]])
 }
 
 /// The loading indicator at loop phase `u`, centered on `center`: it springs
 /// from shape to shape, sweeping to each shape's color, while spinning one
 /// turn per loop.
-fn indicator(u: f32, r: f32, center: P) -> Blob {
+fn indicator(colors: &Palette, u: f32, r: f32, center: P) -> Blob {
     let position = u * LOADING as f32;
     let step = position.floor() as usize;
     let progress = window(position.fract(), (0.0, 0.6));
-    let ((a, from), (b, to)) = (loading(step, r), loading(step + 1, r));
-    let color = mix_color(palette(from), palette(to), ease(progress));
+    let ((a, from), (b, to)) = (loading(colors, step, r), loading(colors, step + 1, r));
+    let color = mix_color(from, to, ease(progress));
     Blob { center, outline: a.mix(&b, spring(progress)), rotation: 360.0 * u, color }
 }
 
@@ -113,8 +98,8 @@ fn place(shape: Shape, scene: Scene) -> Scene {
     if matches!(shape, Shape::Default | Shape::Progress) { scene } else { scene.shift(ANCHOR) }
 }
 
-pub fn scene(shape: Shape, phase: f32) -> Scene {
-    place(shape, layout(shape, phase))
+pub fn scene(colors: &Palette, shape: Shape, phase: f32) -> Scene {
+    place(shape, layout(colors, shape, phase))
 }
 
 const BUSY_FRAMES: usize = 84;
@@ -133,10 +118,10 @@ fn timing(shape: Shape) -> (u32, usize) {
     }
 }
 
-/// The idle gesture at progress `u` in (0, 1), around the shape's own origin.
-/// Spins turn by a symmetry of the shape, so the loop closes seamlessly.
-fn gesture(shape: Shape, u: f32) -> Scene {
-    let rest = layout(shape, 0.0);
+/// The idle gesture of `rest`, the unplaced resting layout, at progress `u`
+/// in (0, 1). Spins turn by a symmetry of the shape, so the loop closes
+/// seamlessly.
+fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
     let origin = (0.0, 0.0);
     match shape {
         Shape::Default => rest.about(origin, 9.0 * wobble(u, 1.5), 1.0),
@@ -159,67 +144,72 @@ fn gesture(shape: Shape, u: f32) -> Scene {
 }
 
 /// Frames of an ordinary cursor: a busy loop, or rest then an idle gesture.
-pub fn frames(shape: Shape) -> Vec<(Scene, u32)> {
+pub fn frames(colors: &Palette, shape: Shape) -> Vec<(Scene, u32)> {
     if shape.is_busy() {
-        return (0..BUSY_FRAMES).map(|i| (scene(shape, i as f32 / BUSY_FRAMES as f32), BUSY_DELAY)).collect();
+        return (0..BUSY_FRAMES).map(|i| (scene(colors, shape, i as f32 / BUSY_FRAMES as f32), BUSY_DELAY)).collect();
     }
     let (hold, count) = timing(shape);
-    std::iter::once((scene(shape, 0.0), hold))
-        .chain((1..count).map(|i| (place(shape, gesture(shape, i as f32 / count as f32)), STEP)))
+    let rest = layout(colors, shape, 0.0);
+    std::iter::once((place(shape, rest.clone()), hold))
+        .chain((1..count).map(|i| (place(shape, gesture(shape, rest.clone(), i as f32 / count as f32)), STEP)))
         .collect()
 }
 
 /// Shapes around the origin; the arrow and progress place themselves.
-fn layout(shape: Shape, phase: f32) -> Scene {
+fn layout(colors: &Palette, shape: Shape, phase: f32) -> Scene {
     match shape {
-        Shape::Default => Scene { blobs: vec![arrow()], glyphs: vec![] },
-        Shape::Progress => Scene { blobs: vec![arrow(), indicator(phase, 3.8, (14.0, 14.0))], glyphs: vec![] },
-        Shape::Wait => Scene { blobs: vec![indicator(phase, 9.5, (0.0, 0.0))], glyphs: vec![] },
+        Shape::Default => Scene { blobs: vec![arrow(colors)], glyphs: vec![] },
+        Shape::Progress => {
+            Scene { blobs: vec![arrow(colors), indicator(colors, phase, 3.8, (14.0, 14.0))], glyphs: vec![] }
+        }
+        Shape::Wait => Scene { blobs: vec![indicator(colors, phase, 9.5, (0.0, 0.0))], glyphs: vec![] },
         Shape::Pointer => Scene {
-            blobs: vec![blob((0.0, 0.0), clover(4, 10.0), 45.0, CORAL)],
+            blobs: vec![blob((0.0, 0.0), clover(4, 10.0), 45.0, colors["link"])],
             glyphs: vec![dot("point", (0.0, 0.0), 3.4)],
         },
-        Shape::Text => Scene { blobs: vec![blob((0.0, 0.0), pill(20.0, 4.2, 0.0), 90.0, INDIGO)], glyphs: vec![] },
-        Shape::VerticalText => {
-            Scene { blobs: vec![blob((0.0, 0.0), pill(20.0, 4.2, 0.0), 0.0, INDIGO)], glyphs: vec![] }
+        Shape::Text => {
+            Scene { blobs: vec![blob((0.0, 0.0), pill(20.0, 4.2, 0.0), 90.0, colors["text"])], glyphs: vec![] }
         }
-        Shape::EwResize => resize(0.0),
-        Shape::NsResize => resize(90.0),
-        Shape::NeswResize => resize(-45.0),
-        Shape::NwseResize => resize(45.0),
+        Shape::VerticalText => {
+            Scene { blobs: vec![blob((0.0, 0.0), pill(20.0, 4.2, 0.0), 0.0, colors["text"])], glyphs: vec![] }
+        }
+        Shape::EwResize => resize(colors, 0.0),
+        Shape::NsResize => resize(colors, 90.0),
+        Shape::NeswResize => resize(colors, -45.0),
+        Shape::NwseResize => resize(colors, 45.0),
         Shape::ColResize => {
             let mut glyphs = vec![stroke("bar", vec![(0.0, -4.6), (0.0, 4.6)], 1.9)];
             glyphs.extend(
                 [("arrow0", 0.0), ("arrow1", 180.0)]
                     .map(|(key, angle)| chevron(key, polar(0.0, 0.0, 6.0, angle), angle, 2.4)),
             );
-            Scene { blobs: vec![blob((0.0, 0.0), cookie(4, 10.5), 45.0, TEAL)], glyphs }
+            Scene { blobs: vec![blob((0.0, 0.0), cookie(4, 10.5), 45.0, colors["resize"])], glyphs }
         }
-        Shape::Grab => Scene { blobs: vec![bloom()], glyphs: vec![dot("dot", (0.0, 0.0), 3.0)] },
-        Shape::Grabbing => Scene { blobs: vec![fist(NAVY)], glyphs: vec![dot("dot", (0.0, 0.0), 3.6)] },
-        Shape::Copy => Scene { blobs: vec![blob((0.0, 0.0), flower(10.0), 0.0, GREEN)], glyphs: plus(3.6) },
+        Shape::Grab => Scene { blobs: vec![bloom(colors)], glyphs: vec![dot("dot", (0.0, 0.0), 3.0)] },
+        Shape::Grabbing => Scene { blobs: vec![fist(colors["grabbing"])], glyphs: vec![dot("dot", (0.0, 0.0), 3.6)] },
+        Shape::Copy => Scene { blobs: vec![blob((0.0, 0.0), flower(10.0), 0.0, colors["copy"])], glyphs: plus(3.6) },
         Shape::NoDrop => {
             let ring = (0..=24).map(|i| polar(0.0, 0.0, 3.6, 15.0 * i as f32)).collect();
             Scene {
-                blobs: vec![fist(RED)],
+                blobs: vec![fist(colors["refuse"])],
                 glyphs: vec![stroke("ring", ring, 1.9), stroke("slash", vec![(-2.5, -2.5), (2.5, 2.5)], 1.9)],
             }
         }
         Shape::NotAllowed => Scene {
-            blobs: vec![blob((0.0, 0.0), polygon(8, 10.2, 2.2, 22.5), 0.0, RED)],
+            blobs: vec![blob((0.0, 0.0), polygon(8, 10.2, 2.2, 22.5), 0.0, colors["refuse"])],
             glyphs: vec![stroke("bar", vec![(-4.4, 0.0), (4.4, 0.0)], 2.8)],
         },
         Shape::Crosshair => {
-            let mut blobs = vec![blob((0.0, 0.0), circle(1.8), 0.0, CHARCOAL)];
-            blobs.extend(
-                [(-90.0, 180.0), (0.0, -90.0), (90.0, 0.0), (180.0, 90.0)]
-                    .map(|(at, turn)| blob(polar(0.0, 0.0, 8.0, at), polygon(3, 2.8, 0.7, turn), 0.0, CHARCOAL)),
-            );
+            let mut blobs = vec![blob((0.0, 0.0), circle(1.8), 0.0, colors["crosshair"])];
+            blobs.extend([(-90.0, 180.0), (0.0, -90.0), (90.0, 0.0), (180.0, 90.0)].map(|(at, turn)| {
+                blob(polar(0.0, 0.0, 8.0, at), polygon(3, 2.8, 0.7, turn), 0.0, colors["crosshair"])
+            }));
             Scene { blobs, glyphs: vec![] }
         }
-        Shape::ZoomIn => Scene { blobs: vec![blob((0.0, 0.0), sunny(10.0), 0.0, MAGENTA)], glyphs: plus(3.6) },
-        Shape::ZoomOut => {
-            Scene { blobs: vec![blob((0.0, 0.0), cookie(12, 9.6), 0.0, MAGENTA)], glyphs: vec![plus(3.6).remove(0)] }
-        }
+        Shape::ZoomIn => Scene { blobs: vec![blob((0.0, 0.0), sunny(10.0), 0.0, colors["zoom"])], glyphs: plus(3.6) },
+        Shape::ZoomOut => Scene {
+            blobs: vec![blob((0.0, 0.0), cookie(12, 9.6), 0.0, colors["zoom"])],
+            glyphs: vec![plus(3.6).remove(0)],
+        },
     }
 }

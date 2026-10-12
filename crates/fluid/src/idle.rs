@@ -6,7 +6,7 @@ use std::f32::consts::PI;
 use cursor_core::Shape;
 use cursor_core::motion::{bump, ease, lerp, polar, spring, window, wobble};
 
-use crate::cursors::{BADGE, BELLY, PALM, scene};
+use crate::cursors::{BADGE, BELLY, PALM};
 use crate::scene::{Drop, P, Scene, Warp, blob};
 
 /// Gesture frame length in milliseconds.
@@ -61,9 +61,9 @@ fn twice(u: f32) -> f32 {
     bump(u, 0.0, 0.45) + bump(u, 0.5, 0.45)
 }
 
-/// The idle gesture at progress `u` in (0, 1).
-pub fn gesture(shape: Shape, u: f32) -> Scene {
-    let rest = scene(shape, 0.0);
+/// The idle gesture of `rest`, the cursor's resting scene, at progress `u` in
+/// (0, 1).
+pub fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
     let origin = (0.0, 0.0);
     match shape {
         // A drop sags from the belly and springs back with a jiggle.

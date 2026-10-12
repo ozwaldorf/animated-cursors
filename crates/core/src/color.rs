@@ -19,6 +19,11 @@ pub fn encode(c: f32) -> f32 {
     if c <= 0.0031308 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
 }
 
+/// 8-bit sRGB channels.
+pub fn srgb8(color: Color) -> [u8; 3] {
+    color.map(|c| (encode(c) * 255.0).round() as u8)
+}
+
 // Published OKLab matrices, kept at full precision.
 #[allow(clippy::excessive_precision)]
 fn oklab([r, g, b]: Color) -> Color {

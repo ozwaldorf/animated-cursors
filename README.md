@@ -6,8 +6,35 @@ design itself rather than cross-fading images. Unpatched compositors and X11
 applications see ordinary (animated) Xcursor themes.
 
 Each theme section below previews every cursor and transition at 64 px
-nominal size. Idle loops play in real time after their rest; transitions are
-slowed and play both ways with pauses at the ends (the real ones last 120 ms).
+nominal size in the default Carburetor palette. Idle loops play in real time
+after their rest; transitions are slowed and play both ways with pauses at the
+ends (the real ones last 120 ms).
+
+## Palettes
+
+Every theme can be built in any palette:
+
+| | Carburetor | Catppuccin Mocha | Gruvbox dark |
+| --- | --- | --- | --- |
+| Shapes | <img src="previews/palettes/shapes-carburetor.gif" alt="shapes in carburetor" width="240"> | <img src="previews/palettes/shapes-catppuccin.gif" alt="shapes in catppuccin" width="240"> | <img src="previews/palettes/shapes-gruvbox.gif" alt="shapes in gruvbox" width="240"> |
+| Dot | <img src="previews/palettes/dot-carburetor.gif" alt="dot in carburetor" width="240"> | <img src="previews/palettes/dot-catppuccin.gif" alt="dot in catppuccin" width="240"> | <img src="previews/palettes/dot-gruvbox.gif" alt="dot in gruvbox" width="240"> |
+| Fluid | <img src="previews/palettes/fluid-carburetor.gif" alt="fluid in carburetor" width="240"> | <img src="previews/palettes/fluid-catppuccin.gif" alt="fluid in catppuccin" width="240"> | <img src="previews/palettes/fluid-gruvbox.gif" alt="fluid in gruvbox" width="240"> |
+
+Every color comes from a palette file per theme, `crates/<theme>/colors/<name>.conf`,
+with one `role = #rrggbb` line per color role and `#` comments. Three are
+bundled: `carburetor` (the default), `catppuccin` (Mocha) and `gruvbox` (dark).
+A theme refuses a palette that misses a role or names an unknown one, and the
+tests generate and check every bundled palette.
+
+Choose one with `--palette NAME`, or pass a path to your own file. The theme
+name in `index.theme` carries the palette, e.g. `Animated Fluid (gruvbox)`. To
+recolor a flake build, patch the bundled file:
+
+```nix
+animated-cursors.packages.${system}.fluid.overrideAttrs (old: {
+  patches = (old.patches or [ ]) ++ [ ./fluid-colors.patch ];
+})
+```
 
 ## Themes
 
@@ -15,20 +42,21 @@ slowed and play both ways with pauses at the ends (the real ones last 120 ms).
 
 Material 3 Expressive inspired. Every cursor is a shape from the M3 shape
 library (rounded polygons, cookies, clovers, sunny and soft-burst stars,
-flowers, pills) in its own vivid color, with white glyphs:
+flowers, pills) in its own palette accent, with glyphs in the palette's text
+color:
 
-| Cursor | Shape | Color |
+| Cursor | Shape | Carburetor color |
 | --- | --- | --- |
-| Arrow | Rounded triangle, tip on the hotspot | Violet |
-| Link | Four-leaf clover with a center dot | Coral |
-| Text, vertical text | Pill | Indigo |
+| Arrow | Rounded triangle, tip on the hotspot | Lavender |
+| Link | Four-leaf clover with a center dot | Peach |
+| Text, vertical text | Pill | Blue |
 | Resize | Pill with chevrons; column resize is a rounded square | Teal |
-| Grab, grabbing | Open 8-petal bloom that closes into a tight cookie | Sky, navy |
+| Grab, grabbing | Open 8-petal bloom that closes into a tight cookie | Sapphire, blue |
 | Copy | Flower with a plus | Green |
 | Not allowed, no drop | Octagon with a bar; closed bloom with a ban sign | Red |
 | Progress, wait | Loading indicator cycling square, triangle, hexagon, pill, pentagon, diamond and circle, each in its own color | Multi |
-| Crosshair | Four triangles around a dot | Charcoal |
-| Zoom | Sunny and 12-sided cookie with plus and minus | Magenta |
+| Crosshair | Four triangles around a dot | Surface gray |
+| Zoom | Sunny and 12-sided cookie with plus and minus | Pink |
 
 Each cursor rests for 1 to 2 seconds, then plays a short springy idle gesture:
 the arrow nods about its tip, the clover, bloom, flower and zoom shapes twirl
@@ -102,13 +130,13 @@ flips end over end, crosshair ticks pulse inward, and the zoom glyph turns.
 
 Liquid metaballs. Every cursor is a few drops (circles, capsules and round
 cones) summed into one distance field through an exponential smooth union, so
-nearby drops melt together with soft necks. Carved drops cut white glyphs out
-of the liquid, and inlaid drops refill holes, as in the zoom lens and the ban
-sign. Colors come from the Carburetor palette: every cursor is the same blue,
-busy drops use its lighter blues, and green and red mark copy and refusal.
-Where differently colored drops meet, their colors blend:
+nearby drops melt together with soft necks. Carved drops cut glyphs out of the
+liquid, showing the border color, and inlaid drops refill holes, as in the zoom lens and the ban
+sign. In the default Carburetor palette every cursor is the same blue, busy
+drops use its lighter blues, and green and red mark copy and refusal. Where
+differently colored drops meet, their colors blend:
 
-| Cursor | Drops | Color |
+| Cursor | Drops | Carburetor color |
 | --- | --- | --- |
 | Arrow | Teardrop, tip on the hotspot | Blue |
 | Link | Upright teardrop with a carved hole | Blue |
@@ -161,8 +189,8 @@ continuously; wait drops are flung out and fall back in twice per turn.
   the theme writer (Xcursor files, transition files, symlinks, GIF previews),
   the CLI, and the consistency checks every theme runs.
 - `crates/dot`, `crates/fluid`, `crates/shapes`: one crate per theme. Each
-  implements `cursor_core::Theme`: hotspots, cursor frames, transition frames
-  and drawing.
+  implements `cursor_core::Theme`: color roles and bundled palettes, cursor
+  frames, transition frames and drawing.
 
 A new theme is a crate with a `Theme` implementation, a three-line `main.rs`
 calling `cursor_core::cli::run`, and a test calling `cursor_core::check::theme`.
@@ -178,6 +206,8 @@ filling the image, and working aliases.
 nix build .#shapes                       # theme in result/share/icons
 nix build .#dot
 nix build .#fluid
+nix build .#fluid-catppuccin             # installs as animated_fluid_cursors_catppuccin
+nix build .#shapes-gruvbox               # every theme has -catppuccin and -gruvbox
 nix build .#niri --out-link result-niri  # patched Niri 26.04
 ```
 
@@ -190,6 +220,9 @@ cargo run --release -p shapes-cursors -- --output build/shapes --preview preview
 cargo run --release -p dot-cursors -- --output build/dot --preview previews/dot
 cargo run --release -p fluid-cursors -- --output build/fluid --preview previews/fluid
 cargo run --release -p dot-cursors -- --output build/dot-small --sizes 24,32
+cargo run --release -p fluid-cursors -- --output build/fluid-mocha --palette catppuccin
+cargo run --release -p fluid-cursors -- --output build/fluid-mine --palette my-colors.conf
+cargo run --release -p fluid-cursors -- --sheet previews/palettes/fluid-gruvbox.gif --palette gruvbox
 ```
 
 ## Niri

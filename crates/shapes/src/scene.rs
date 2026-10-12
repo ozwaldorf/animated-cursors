@@ -19,7 +19,6 @@ pub struct Glyph {
     pub key: &'static str,
     pub points: Vec<P>,
     pub width: f32,
-    pub color: Color,
     /// Grows and shrinks about `pivot` as glyphs come and go.
     pub scale: f32,
     pub pivot: P,
@@ -75,7 +74,6 @@ pub fn blend(a: &Scene, b: &Scene, t: f32) -> Scene {
         Some(Glyph {
             points: points.collect(),
             width: lerp(x.width, y.width, shape),
-            color: mix_color(x.color, y.color, hue),
             scale: lerp(x.scale, y.scale, shape),
             pivot: (lerp(x.pivot.0, y.pivot.0, shape), lerp(x.pivot.1, y.pivot.1, shape)),
             key: x.key,

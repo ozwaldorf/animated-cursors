@@ -1,6 +1,7 @@
-//! Paints shapes with a white rim and soft shadow, then their glyphs.
+//! Paints shapes with a rim and soft shadow, then their glyphs.
 
-use cursor_core::color::{Color, encode};
+use cursor_core::Palette;
+use cursor_core::color::{Color, srgb8};
 use cursor_core::paint::{Shadow, drop_shadow};
 use tiny_skia::{FillRule, LineCap, LineJoin, Paint, Path, PathBuilder, Pixmap, Stroke, Transform};
 
@@ -21,7 +22,7 @@ fn path(points: &[P], closed: bool) -> Option<Path> {
 }
 
 fn paint(color: Color) -> Paint<'static> {
-    let [r, g, b] = color.map(|c| (encode(c) * 255.0).round() as u8);
+    let [r, g, b] = srgb8(color);
     let mut paint = Paint::default();
     paint.set_color_rgba8(r, g, b, 255);
     paint
@@ -40,7 +41,7 @@ fn solid(pixmap: &mut Pixmap, path: &Path, color: Color, width: f32, transform: 
     }
 }
 
-pub fn draw(scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
+pub fn draw(colors: &Palette, scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
     let shapes: Vec<(Path, Color)> = scene
         .blobs
         .iter()
@@ -48,16 +49,16 @@ pub fn draw(scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
         .filter_map(|blob| Some((path(&blob.outline.points(blob.center, blob.rotation), true)?, blob.color)))
         .collect();
     drop_shadow(pixmap, &SHADOW, transform, |pixmap, transform| {
-        shapes.iter().for_each(|(path, _)| solid(pixmap, path, [0.0; 3], BORDER * 2.0, transform))
+        shapes.iter().for_each(|(path, _)| solid(pixmap, path, colors["shadow"], BORDER * 2.0, transform))
     });
-    shapes.iter().for_each(|(path, _)| solid(pixmap, path, [1.0; 3], BORDER * 2.0, transform));
+    shapes.iter().for_each(|(path, _)| solid(pixmap, path, colors["border"], BORDER * 2.0, transform));
     shapes.iter().for_each(|(path, color)| solid(pixmap, path, *color, 0.0, transform));
     for glyph in scene.glyphs.iter().filter(|glyph| glyph.scale > 0.02) {
         let k = glyph.scale;
         let (px, py) = glyph.pivot;
         let points: Vec<P> = glyph.points.iter().map(|&(x, y)| (px + (x - px) * k, py + (y - py) * k)).collect();
         if let Some(path) = path(&points, false) {
-            pixmap.stroke_path(&path, &paint(glyph.color), &stroke(glyph.width * k), transform, None);
+            pixmap.stroke_path(&path, &paint(colors["glyph"]), &stroke(glyph.width * k), transform, None);
         }
     }
 }

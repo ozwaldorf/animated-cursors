@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use crate::palette::Palette;
 use crate::shape::{LEGACY_ALIASES, PAIRS, Shape};
 use crate::theme::{PAINTED, SIZES, TRANSITION_DELAY, TRANSITION_FRAMES, Theme, generate, transition_names};
 use crate::xcursor::{Image, decode};
@@ -43,9 +44,17 @@ fn span(image: &Image) -> u32 {
     x1.saturating_sub(x0).max(y1.saturating_sub(y0))
 }
 
+/// Generates the theme in every bundled palette and checks each.
+pub fn theme<T: Theme>() {
+    for (name, _) in T::PALETTES {
+        generated(&T::new(Palette::load::<T>(name).unwrap()));
+    }
+}
+
 /// Generates the theme into a temporary directory and checks it.
-pub fn theme<T: Theme>(theme: &T) {
-    let output = std::env::temp_dir().join(format!("{}-check-{}", T::ID, std::process::id()));
+fn generated<T: Theme>(theme: &T) {
+    let name = &theme.palette().name;
+    let output = std::env::temp_dir().join(format!("{}-{name}-check-{}", T::ID, std::process::id()));
     let _ = fs::remove_dir_all(&output);
     generate(theme, &output, None, &SIZES).unwrap();
     let cursors = output.join("cursors");

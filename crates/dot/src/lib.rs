@@ -4,7 +4,7 @@ pub mod idle;
 pub mod render;
 pub mod rig;
 
-use cursor_core::{Frame, Shape, Theme};
+use cursor_core::{Frame, Palette, Shape, Theme};
 use tiny_skia::{Pixmap, Transform};
 
 use crate::rig::{Parts, blend, parts};
@@ -12,13 +12,29 @@ use crate::rig::{Parts, blend, parts};
 const SPIN_FRAMES: usize = 36;
 const SPIN_DELAY: u32 = 25;
 
-pub struct Dot;
+pub struct Dot {
+    colors: Palette,
+}
 
 impl Theme for Dot {
     type Scene = Parts;
 
     const ID: &'static str = "animated_dot_cursors";
     const TITLE: &'static str = "Animated Dot";
+    const ROLES: &'static [&'static str] = &["ink", "border", "shadow"];
+    const PALETTES: &'static [(&'static str, &'static str)] = &[
+        ("carburetor", include_str!("../colors/carburetor.conf")),
+        ("catppuccin", include_str!("../colors/catppuccin.conf")),
+        ("gruvbox", include_str!("../colors/gruvbox.conf")),
+    ];
+
+    fn new(colors: Palette) -> Dot {
+        Dot { colors }
+    }
+
+    fn palette(&self) -> &Palette {
+        &self.colors
+    }
 
     fn cursor(&self, shape: Shape) -> Vec<Frame<Parts>> {
         if shape.is_busy() {
@@ -40,6 +56,6 @@ impl Theme for Dot {
     }
 
     fn draw(&self, scene: &Parts, pixmap: &mut Pixmap, transform: Transform) {
-        render::draw(scene, pixmap, transform);
+        render::draw(&self.colors, scene, pixmap, transform);
     }
 }

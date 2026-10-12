@@ -1,14 +1,14 @@
 //! Rasterizes rig parts. Every part is a stroked centerline, so the halo is
 //! the same geometry stroked wider and overlapping parts merge into one outline.
 
+use cursor_core::Palette;
+use cursor_core::color::{Color, srgb8};
 use cursor_core::motion::polar;
 use cursor_core::paint::{Shadow, drop_shadow};
 use tiny_skia::{FillRule, LineCap, LineJoin, Paint, Path, PathBuilder, Pixmap, Stroke, Transform};
 
 use crate::rig::{Kind, Part};
 
-const INK: [u8; 3] = [0x12, 0x12, 0x12];
-const HALO: [u8; 3] = [0xff, 0xff, 0xff];
 const BORDER: f32 = 1.5;
 const SHADOW: Shadow = Shadow { opacity: 0.35, offset: 1.2, blur: 0.9 };
 
@@ -78,7 +78,8 @@ fn geometry(part: &Part) -> Option<Geometry> {
 
 /// Draws parts in one color; `grow` widens every stroke by that much per side,
 /// tapering for parts thinner than two units so collapsing parts vanish.
-fn layer(pixmap: &mut Pixmap, parts: &[(&str, Part)], [r, g, b]: [u8; 3], grow: f32, transform: Transform) {
+fn layer(pixmap: &mut Pixmap, parts: &[(&str, Part)], color: Color, grow: f32, transform: Transform) {
+    let [r, g, b] = srgb8(color);
     let mut paint = Paint::default();
     paint.set_color_rgba8(r, g, b, 255);
     for (_, part) in parts.iter().filter(|(_, part)| part.width > 0.0) {
@@ -99,9 +100,11 @@ fn layer(pixmap: &mut Pixmap, parts: &[(&str, Part)], [r, g, b]: [u8; 3], grow: 
     }
 }
 
-/// Draws parts with a white border and soft shadow.
-pub fn draw(parts: &[(&str, Part)], pixmap: &mut Pixmap, transform: Transform) {
-    drop_shadow(pixmap, &SHADOW, transform, |pixmap, transform| layer(pixmap, parts, [0, 0, 0], BORDER, transform));
-    layer(pixmap, parts, HALO, BORDER, transform);
-    layer(pixmap, parts, INK, 0.0, transform);
+/// Draws parts in ink with a border and soft shadow.
+pub fn draw(colors: &Palette, parts: &[(&str, Part)], pixmap: &mut Pixmap, transform: Transform) {
+    drop_shadow(pixmap, &SHADOW, transform, |pixmap, transform| {
+        layer(pixmap, parts, colors["shadow"], BORDER, transform)
+    });
+    layer(pixmap, parts, colors["border"], BORDER, transform);
+    layer(pixmap, parts, colors["ink"], 0.0, transform);
 }

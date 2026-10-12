@@ -16,6 +16,7 @@ use std::thread;
 use tiny_skia::{Pixmap, PixmapPaint, Transform};
 
 use crate::paint::argb;
+use crate::palette::Palette;
 use crate::shape::{LEGACY_ALIASES, PAIRS, Shape};
 use crate::xcursor::{Image, encode};
 
@@ -45,6 +46,17 @@ pub trait Theme: Sync {
     /// Installed directory name.
     const ID: &'static str;
     const TITLE: &'static str;
+
+    /// Color roles every palette defines.
+    const ROLES: &'static [&'static str];
+    /// Bundled palettes as (name, `role = #rrggbb` text); the first is the
+    /// default.
+    const PALETTES: &'static [(&'static str, &'static str)];
+
+    /// The theme drawn in `palette`.
+    fn new(palette: Palette) -> Self;
+
+    fn palette(&self) -> &Palette;
 
     /// Frames of an ordinary cursor; more than one makes it loop.
     fn cursor(&self, shape: Shape) -> Vec<Frame<Self::Scene>>;
@@ -241,6 +253,37 @@ fn preview<T: Theme>(
     gif(path, &frames, &delays, 1)
 }
 
+/// Cursors on a palette sheet, in two rows.
+const SHEET: [Shape; 10] = [
+    Shape::Default,
+    Shape::Pointer,
+    Shape::Text,
+    Shape::EwResize,
+    Shape::Grab,
+    Shape::Copy,
+    Shape::NotAllowed,
+    Shape::Wait,
+    Shape::ZoomIn,
+    Shape::Crosshair,
+];
+
+/// A still of a few resting cursors at 64 px, for comparing palettes.
+pub fn sheet<T: Theme>(theme: &T, path: &Path) -> io::Result<()> {
+    const SIZE: u32 = 64;
+    let columns = SHEET.len() as u32 / 2;
+    let scenes: Vec<T::Scene> =
+        parallel(&SHEET, |shape| theme.cursor(*shape).into_iter().next().expect("cursor has frames").scene);
+    let bounds = parallel(&scenes, |scene| measure(theme, scene));
+    let fit = Fit { extent: bounds.iter().map(Bounds::extent).fold(0.0, f32::max) };
+    let mut canvas = Pixmap::new(SIZE * columns, SIZE * 2).expect("nonzero size");
+    for (index, (scene, bounds)) in scenes.iter().zip(&bounds).enumerate() {
+        let image = render(theme, scene, fit.scale(SIZE), SIZE, fit.hotspot(bounds, SIZE));
+        let (x, y) = (index as u32 % columns * SIZE, index as u32 / columns * SIZE);
+        canvas.draw_pixmap(x as i32, y as i32, image.as_ref(), &PixmapPaint::default(), Transform::identity(), None);
+    }
+    gif(path, &[&canvas], &[0], 1)
+}
+
 /// Writes pixmaps as a looping GIF over a neutral grey, scaled up by `scale`
 /// with nearest-neighbour sampling; `delays` are in hundredths of a second.
 pub fn gif(path: &Path, pixmaps: &[&Pixmap], delays: &[u16], scale: usize) -> io::Result<()> {
@@ -294,7 +337,7 @@ pub fn generate<T: Theme>(theme: &T, output: &Path, previews: Option<&Path>, siz
     if let Some(directory) = previews {
         fs::create_dir_all(directory)?;
     }
-    fs::write(output.join("index.theme"), format!("[Icon Theme]\nName={}\n", T::TITLE))?;
+    fs::write(output.join("index.theme"), format!("[Icon Theme]\nName={} ({})\n", T::TITLE, theme.palette().name))?;
 
     let shapes: HashMap<Shape, Sequence<T::Scene>> =
         Shape::ALL.into_iter().zip(parallel(&Shape::ALL, |shape| cursor_sequence(theme, *shape))).collect();

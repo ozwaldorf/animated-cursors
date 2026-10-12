@@ -1,7 +1,8 @@
-//! Rasterizes the distance field: colored liquid inside a white border, over
-//! a soft shadow. Carved holes are thinner than the border, so they show white.
+//! Rasterizes the distance field: colored liquid inside a border, over a soft
+//! shadow. Carved holes are thinner than the border, so they show its color.
 
-use cursor_core::color::encode;
+use cursor_core::Palette;
+use cursor_core::color::{Color, encode};
 use cursor_core::paint::{Shadow, drop_shadow};
 use tiny_skia::{Pixmap, Transform};
 
@@ -25,8 +26,10 @@ fn bounds(scene: &Scene) -> (P, P) {
     })
 }
 
-/// Composites the scene over `pixmap`; a silhouette paints the rim in black.
-fn raster(scene: &Scene, pixmap: &mut Pixmap, transform: Transform, silhouette: bool) {
+/// Composites the scene over `pixmap` with a `border` color; a silhouette
+/// paints the whole rim in it instead.
+fn raster(scene: &Scene, pixmap: &mut Pixmap, transform: Transform, border: Color, silhouette: bool) {
+    let border = border.map(encode);
     let (scale, tx, ty) = (transform.sx, transform.tx, transform.ty);
     let (width, height) = (pixmap.width() as usize, pixmap.height() as usize);
     let (lo, hi) = bounds(scene);
@@ -46,11 +49,12 @@ fn raster(scene: &Scene, pixmap: &mut Pixmap, transform: Transform, silhouette: 
                 continue;
             }
             let source = if silhouette {
-                [0.0, 0.0, 0.0, rim]
+                let [r, g, b] = border.map(|c| c * rim);
+                [r, g, b, rim]
             } else {
-                let white = rim * (1.0 - fill);
-                let [r, g, b] = sample.color.map(|c| encode(c) * fill + white);
-                [r, g, b, fill + white]
+                let edge = rim * (1.0 - fill);
+                let [r, g, b] = std::array::from_fn(|i| encode(sample.color[i]) * fill + border[i] * edge);
+                [r, g, b, fill + edge]
             };
             let pixel = &mut data[(y * width + x) * 4..][..4];
             for (channel, value) in pixel.iter_mut().zip(source) {
@@ -61,7 +65,9 @@ fn raster(scene: &Scene, pixmap: &mut Pixmap, transform: Transform, silhouette: 
     }
 }
 
-pub fn draw(scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
-    drop_shadow(pixmap, &SHADOW, transform, |pixmap, transform| raster(scene, pixmap, transform, true));
-    raster(scene, pixmap, transform, false);
+pub fn draw(colors: &Palette, scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
+    drop_shadow(pixmap, &SHADOW, transform, |pixmap, transform| {
+        raster(scene, pixmap, transform, colors["shadow"], true)
+    });
+    raster(scene, pixmap, transform, colors["border"], false);
 }

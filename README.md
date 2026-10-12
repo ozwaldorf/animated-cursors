@@ -1,18 +1,23 @@
 # Animated Cursors
 
-Parametric Xcursor themes designed for reversible cursor transitions in a
-patched compositor ([Niri](patches/README.md#niri) for now). Every cursor is drawn from code, so transitions interpolate the
-design itself rather than cross-fading images. Unpatched compositors and X11
-applications see ordinary (animated) Xcursor themes.
+Xcursor themes drawn from code, morphing between cursors in compositors that
+support it and plain animated cursors everywhere else.
 
-Each theme section below previews every cursor and transition at 64 px
-nominal size in the default Carburetor palette. Idle loops play in real time
-after their rest; transitions are slowed and play both ways with pauses at the
-ends (the real ones last 120 ms).
+- [Compositor support](#compositor-support)
+- [Palettes](#palettes)
+- [Themes](#themes)
+  - [Shapes](#shapes-animated_shapes_cursors)
+  - [Dot](#dot-animated_dot_cursors)
+  - [Fluid](#fluid-animated_fluid_cursors)
+- [Build](#build)
+- [License](#license)
+
+## Compositor support
+
+Transitions need a compositor that plays them. See [`patches/`](patches/README.md)
+for the spec and a Niri patch.
 
 ## Palettes
-
-Every theme can be built in any palette:
 
 | | Carburetor | Catppuccin Mocha | Gruvbox dark |
 | --- | --- | --- | --- |
@@ -20,57 +25,23 @@ Every theme can be built in any palette:
 | Dot | <img src="previews/palettes/dot-carburetor.gif" alt="dot in carburetor" width="240"> | <img src="previews/palettes/dot-catppuccin.gif" alt="dot in catppuccin" width="240"> | <img src="previews/palettes/dot-gruvbox.gif" alt="dot in gruvbox" width="240"> |
 | Fluid | <img src="previews/palettes/fluid-carburetor.gif" alt="fluid in carburetor" width="240"> | <img src="previews/palettes/fluid-catppuccin.gif" alt="fluid in catppuccin" width="240"> | <img src="previews/palettes/fluid-gruvbox.gif" alt="fluid in gruvbox" width="240"> |
 
-Every color comes from a palette file per theme, `crates/<theme>/colors/<name>.conf`,
-with one `role = #rrggbb` line per color role and `#` comments. Three are
-bundled: `carburetor` (the default), `catppuccin` (Mocha) and `gruvbox` (dark).
-A theme refuses a palette that misses a role or names an unknown one. `cargo
-test` checks every bundled palette, or only `CURSOR_PALETTE` (a name or file)
-when set; each flake package checks just its own crate in the palette it
-builds.
-
-Choose one with `--palette NAME`, or pass a path to your own file. The theme
-name in `index.theme` carries the palette, e.g. `Animated Fluid (gruvbox)`.
-
-Flake packages take a bundled `palette` and a `colors` attrset of roles to
-replace in it:
+Pick one with `--palette carburetor|catppuccin|gruvbox` or a path to your own
+`role = #rrggbb` file (see `crates/<theme>/colors`). With the flake:
 
 ```nix
 animated-cursors.packages.${system}.fluid.override {
   palette = "catppuccin";
-  colors = {
-    arrow = "#f5c2e7";
-    link = "#f5c2e7";
-  };
+  colors.arrow = "#f5c2e7";
 }
 ```
 
 ## Themes
 
+Previews are 64 px; transitions are slowed down and play both ways.
+
 ### Shapes (`animated_shapes_cursors`)
 
-Material 3 Expressive inspired. Every cursor is a shape from the M3 shape
-library (rounded polygons, cookies, sunny and soft-burst stars, flowers,
-pills) in its own palette accent, with glyphs in the palette's text color:
-
-| Cursor | Shape | Carburetor color |
-| --- | --- | --- |
-| Arrow | Rounded triangle, tip on the hotspot | Lavender |
-| Link | The arrow with a dot on its body | Peach |
-| Text, vertical text | Pill | Blue |
-| Resize | Pill with chevrons; column resize is a rounded square | Teal |
-| Grab, grabbing | Open 8-petal bloom that closes into a tight cookie | Sapphire, blue |
-| Copy | Flower with a plus | Green |
-| Not allowed, no drop | Octagon with a bar; closed bloom with a ban sign | Red |
-| Progress, wait | Loading indicator cycling square, triangle, hexagon, pill, pentagon, diamond and circle, each in its own color | Multi |
-| Crosshair | Four triangles around a dot | Surface gray |
-| Zoom | Sunny and 12-sided cookie with plus and minus | Pink |
-
-Every cursor clicks at the arrow tip, and every shape sits centered on the
-arrow body, so morphs happen in place. For centered shapes such as the
-bloom, pill or octagon, the click point is at their upper left.
-
-Shapes are polar outlines (radii at evenly spaced angles), so any two morph
-by interpolating radii, and glyphs that share a key morph into each other.
+Material 3 Expressive shapes.
 
 #### Cursors
 
@@ -93,9 +64,7 @@ by interpolating radii, and glyphs that share a key morph into each other.
 
 ### Dot (`animated_dot_cursors`)
 
-Minimal dots and rings built from keyed bars, chevrons and arcs; parts sharing
-a key morph between shapes. A transition played backwards is exactly the
-opposite transition, which the tests check for every pair.
+Minimal dots and rings.
 
 #### Cursors
 
@@ -118,30 +87,7 @@ opposite transition, which the tests check for every pair.
 
 ### Fluid (`animated_fluid_cursors`)
 
-Liquid metaballs. Every cursor is a few drops (circles, capsules and round
-cones) summed into one distance field through an exponential smooth union, so
-nearby drops melt together with soft necks. Carved drops cut glyphs out of the
-liquid, showing the border color, and inlaid drops refill holes, as in the ban
-sign. In the default Carburetor palette every cursor is the same blue, busy
-drops split off a lighter sky, and green and red mark copy and refusal. Where
-differently colored drops meet, their colors blend:
-
-| Cursor | Drops | Carburetor color |
-| --- | --- | --- |
-| Arrow | Teardrop, tip on the hotspot | Blue |
-| Link | Upright teardrop with a carved hole | Blue |
-| Text, vertical text | Stem with two-armed serifs that fold into resize arrowheads | Blue |
-| Resize | Bar with chevron arrowheads | Blue |
-| Grab, grabbing | Palm with a thumb and three fingers that pull in to knuckles | Blue |
-| Copy, no drop | Fist with a badge drop carved with a plus or a slash | Blue, green, red |
-| Not allowed | Ring with an inlaid slash | Red |
-| Progress | Teardrop with a small dividing cell at its belly | Blue, sky |
-| Wait | Cell that splits in two and merges back | Blue, sky |
-| Crosshair | Dot and four ticks | Blue |
-| Zoom | Lens with a handle, carved with a plus or minus; it shrinks to zoom out | Blue |
-
-Drops sharing a key flow into each other. A transition played backwards is
-exactly the opposite transition, which the tests check for every pair.
+Liquid metaballs.
 
 #### Cursors
 
@@ -162,31 +108,13 @@ exactly the opposite transition, which the tests check for every pair.
 | <img src="previews/fluid/grabbing-to-not-allowed.gif" alt="grabbing / not-allowed" width="96"><br><sub>grabbing / not-allowed</sub> | <img src="previews/fluid/pointer-to-text.gif" alt="pointer / text" width="96"><br><sub>pointer / text</sub> | <img src="previews/fluid/text-to-col-resize.gif" alt="text / col-resize" width="96"><br><sub>text / col-resize</sub> | <img src="previews/fluid/text-to-ew-resize.gif" alt="text / ew-resize" width="96"><br><sub>text / ew-resize</sub> | <img src="previews/fluid/text-to-nesw-resize.gif" alt="text / nesw-resize" width="96"><br><sub>text / nesw-resize</sub> |
 | <img src="previews/fluid/text-to-ns-resize.gif" alt="text / ns-resize" width="96"><br><sub>text / ns-resize</sub> | <img src="previews/fluid/text-to-nwse-resize.gif" alt="text / nwse-resize" width="96"><br><sub>text / nwse-resize</sub> | <img src="previews/fluid/text-to-vertical-text.gif" alt="text / vertical-text" width="96"><br><sub>text / vertical-text</sub> | <img src="previews/fluid/zoom-in-to-zoom-out.gif" alt="zoom-in / zoom-out" width="96"><br><sub>zoom-in / zoom-out</sub> |  |
 
-## Layout
-
-- `crates/core`: shape names and aliases, motion, color and paint helpers,
-  the theme writer (Xcursor files, transition files, symlinks, GIF previews),
-  the CLI, and the consistency checks every theme runs.
-- `crates/dot`, `crates/fluid`, `crates/shapes`: one crate per theme. Each
-  implements `cursor_core::Theme`: color roles and bundled palettes, cursor
-  frames, transition frames and drawing.
-
-A new theme is a crate with a `Theme` implementation, a three-line `main.rs`
-calling `cursor_core::cli::run`, and a test calling `cursor_core::check::theme`.
-
-The checks require images exactly their nominal size with the hotspot inside,
-a hotspot fixed across each cursor's frames, transition endpoints identical
-to the ordinary cursors, nothing clipped at the image edge, the largest frame
-filling the image, and working aliases.
-
 ## Build
 
 ```sh
 nix build .#shapes                       # theme in result/share/icons
 nix build .#dot
 nix build .#fluid
-nix build .#fluid-catppuccin             # installs as animated_fluid_cursors_catppuccin
-nix build .#shapes-gruvbox               # every theme has -catppuccin and -gruvbox
+nix build .#fluid-catppuccin             # every theme has -catppuccin and -gruvbox
 nix build .#niri --out-link result-niri  # patched Niri 26.04
 ```
 
@@ -195,31 +123,10 @@ Locally:
 ```sh
 nix develop
 cargo test
-cargo run --release -p shapes-cursors -- --output build/shapes --preview previews/shapes
-cargo run --release -p dot-cursors -- --output build/dot --preview previews/dot
 cargo run --release -p fluid-cursors -- --output build/fluid --preview previews/fluid
-cargo run --release -p dot-cursors -- --output build/dot-small --sizes 24,32
-cargo run --release -p fluid-cursors -- --output build/fluid-mocha --palette catppuccin
-cargo run --release -p fluid-cursors -- --output build/fluid-mine --palette my-colors.conf
+cargo run --release -p fluid-cursors -- --output build/fluid --sizes 24,48 --palette gruvbox
 cargo run --release -p fluid-cursors -- --sheet previews/palettes/fluid-gruvbox.gif --palette gruvbox
 ```
-
-## Compositor support
-
-Transitions need a compositor that plays them. [`patches/`](patches/README.md)
-has a short spec for adding support to a compositor, and a patch for Niri
-26.04 as an example.
-
-A transition is an ordinary animated Xcursor file named
-`cursors/<from>-to-<to>` with Wayland cursor-shape names, 24 frames at 5 ms.
-One file serves both directions, and shape aliases share it through symlinks.
-Every image is exactly its nominal size, 32, 48, 64, 72 and 96 px by default
-(`--sizes` chooses others), covering sizes 32 and 48 at output scales 1, 1.5
-and 2. Each theme is drawn at one scale, fitted so its largest frame,
-shadow, idle gestures and transitions included, fills the image less a 2 px
-margin. Each cursor's hotspot is placed to center all of its frames, and
-transition frames between the endpoints center themselves, carrying their own
-hotspots.
 
 ## License
 

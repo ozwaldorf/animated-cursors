@@ -1,0 +1,170 @@
+//! Idle loops: each cursor rests, then plays a short gesture that ends where
+//! it started. Spins turn by a symmetry of the prop, so loops close.
+
+use std::f32::consts::PI;
+
+use cursor_core::Shape;
+use cursor_core::motion::{bump, ease, wobble};
+
+use crate::rig::{GRIP, Pose, Prop, Scene, index_tip, reach, reach_root};
+use crate::vector::{Rot, V};
+
+/// Gesture frame length in milliseconds.
+pub const STEP: u32 = 30;
+
+/// Milliseconds at rest, then gesture frames.
+pub fn timing(shape: Shape) -> (u32, usize) {
+    match shape {
+        Shape::Default => (1600, 30),
+        Shape::Text | Shape::VerticalText => (1800, 28),
+        Shape::Pointer | Shape::Grab | Shape::Copy | Shape::NotAllowed => (1200, 28),
+        _ => (1400, 24),
+    }
+}
+
+fn props(mut scene: Scene, f: impl Fn(Prop) -> Prop) -> Scene {
+    scene.props.iter_mut().for_each(|(_, p)| *p = f(*p));
+    scene
+}
+
+fn hand(scene: Scene, f: impl Fn(Pose) -> Pose) -> Scene {
+    Scene { hand: f(scene.hand), ..scene }
+}
+
+/// The whole scene rolled `degrees` about the hand's grip, so what it holds
+/// swings in the hand.
+fn rolled(scene: Scene, degrees: f32) -> Scene {
+    let (turn, pivot) = (Rot::z(degrees), scene.hand.place(GRIP));
+    let about = |at: V| pivot + turn.apply(at - pivot);
+    let scene = hand(scene, |p| Pose { at: about(p.at), roll: p.roll + degrees, ..p });
+    props(scene, |p| Prop { at: about(p.at), roll: p.roll + degrees, ..p })
+}
+
+/// Curl of each finger changed by `f(finger)`.
+fn curled(pose: Pose, f: impl Fn(usize) -> f32) -> Pose {
+    Pose { curl: std::array::from_fn(|i| pose.curl[i] + f(i)), ..pose }
+}
+
+/// The whole scene moved by `offset`.
+fn moved(scene: Scene, offset: V) -> Scene {
+    let scene = hand(scene, |p| Pose { at: p.at + offset, ..p });
+    props(scene, |p| Prop { at: p.at + offset, ..p })
+}
+
+/// `pose` moved so its index fingertip stays where it is in `rest`.
+fn kept(pose: Pose, rest: &Pose) -> Pose {
+    pose.pinned(index_tip(&pose), rest.place(index_tip(rest)))
+}
+
+/// Damped shake that starts and ends at rest.
+fn shake(u: f32, cycles: f32) -> f32 {
+    (PI * 2.0 * cycles * u).sin() * (1.0 - u)
+}
+
+/// Idle gestures in turn, each after a rest.
+pub fn variants(shape: Shape) -> usize {
+    if shape == Shape::Default { 3 } else { 1 }
+}
+
+/// The idle gesture `variant` of `rest`, the cursor's resting scene, at
+/// progress `u` in (0, 1).
+pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
+    match shape {
+        // The hand itself stays where it floats while, by turns, the fingers
+        // curl inward with the thumb closing in toward them, the hand splays
+        // open a little, and a ripple runs from the pinky to the index with the
+        // thumb last.
+        Shape::Default => hand(rest, |p| {
+            let thumb = |out: f32, fold: f32, bend: f32| [p.thumb[0] + out, p.thumb[1] + fold, p.thumb[2] + bend];
+            match variant {
+                0 => {
+                    let close = bump(u, 0.0, 1.0);
+                    let spread = p.spread.map(|s| s * (1.0 - 0.2 * close));
+                    Pose {
+                        spread,
+                        thumb: thumb(-18.0 * close, 6.0 * close, 0.45 * close),
+                        ..curled(p, |_| 0.2 * close)
+                    }
+                }
+                1 => {
+                    let splay = bump(u, 0.0, 1.0);
+                    let spread = p.spread.map(|s| s * (1.0 + 0.4 * splay));
+                    Pose {
+                        spread,
+                        thumb: thumb(12.0 * splay, -6.0 * splay, -0.1 * splay),
+                        ..curled(p, |_| -0.12 * splay)
+                    }
+                }
+                _ => {
+                    let ripple = curled(p, |i| 0.18 * bump(u, 0.12 * (3 - i) as f32, 0.45));
+                    Pose { thumb: thumb(0.0, 0.0, 0.35 * bump(u, 0.5, 0.45)), ..ripple }
+                }
+            }
+        }),
+        // Two quick pokes: the hand thrusts along the finger into the screen
+        // while the fingertip stays planted on the hotspot, so the finger
+        // flexes under the press.
+        Shape::Pointer => hand(rest, |p| {
+            let thrust = bump(u, 0.05, 0.3) + bump(u, 0.5, 0.3);
+            let tip = p.place(index_tip(&p));
+            let along = (tip - p.place(reach_root(0))).normalized();
+            let pushed = Pose { at: p.at + along * (1.2 * thrust), size: p.size * (1.0 - 0.04 * thrust), ..p };
+            let mut flex = pushed.flex;
+            flex[0] = reach(&pushed, 0, tip);
+            Pose { flex, ..pushed }
+        }),
+        // The hand waggles the caret or arrow in its grip.
+        Shape::Text
+        | Shape::VerticalText
+        | Shape::EwResize
+        | Shape::NsResize
+        | Shape::NeswResize
+        | Shape::NwseResize
+        | Shape::ColResize => rolled(rest, 16.0 * wobble(u, 2.0)),
+        // Fingers wave one after another as the hand rocks.
+        Shape::Grab => hand(rest, |p| {
+            let wave = curled(p, |i| 0.15 * bump(u, 0.1 * i as f32, 0.45));
+            Pose { turn: p.turn + 10.0 * wobble(u, 1.5), ..wave }
+        }),
+        Shape::Grabbing => hand(rest, |p| Pose { roll: p.roll + 8.0 * shake(u, 3.0), ..p }),
+        // The badge flips over as the fist bobs.
+        Shape::Copy => {
+            let scene = props(rest, |p| Prop { spin: 360.0 * ease(u), ..p });
+            hand(scene, |p| Pose { tip: p.tip - 20.0 * bump(u, 0.0, 1.0), ..p })
+        }
+        Shape::NoDrop => moved(rest, V(1.2 * shake(u, 3.0), 0.0, 0.0)),
+        // The hand thrusts the sign forward.
+        Shape::NotAllowed => hand(rest, |p| Pose { tip: p.tip - 25.0 * bump(u, 0.0, 0.5), ..p }),
+        // The hand sweeps the reticle around, as if taking aim.
+        Shape::Crosshair => rolled(rest, 14.0 * wobble(u, 1.5)),
+        Shape::ZoomIn | Shape::ZoomOut => rolled(rest, 12.0 * wobble(u, 2.0)),
+        Shape::Progress | Shape::Wait => rest,
+    }
+}
+
+/// Milliseconds per hover bob, roughly; each loop fits whole bobs.
+const BOB: f32 = 2200.0;
+
+/// The scene floating at `phase` in [0, 1) of an idle loop: pointing hands
+/// sway on their fingertip, the rest bob up and down with what they hold.
+pub fn hover(shape: Shape, scene: Scene, phase: f32) -> Scene {
+    let (hold, count) = timing(shape);
+    let length = (variants(shape) as u32 * (hold + (count as u32 - 1) * STEP)) as f32;
+    let cycles = (length / BOB).round().max(1.0);
+    let (s, c) = (2.0 * PI * cycles * phase).sin_cos();
+    match shape {
+        Shape::Pointer => {
+            let still = scene.hand;
+            hand(scene, |p| kept(Pose { turn: p.turn + 7.0 * s, roll: p.roll + 2.5 * (1.0 - c), ..p }, &still))
+        }
+        // The resting hand drifts a little around the hotspot.
+        Shape::Default => {
+            let scene = moved(scene, V(0.3 * s * c, -0.35 * s, 0.0));
+            hand(scene, |p| Pose { turn: p.turn + 6.0 * s, roll: p.roll + 1.5 * s, ..p })
+        }
+        _ => {
+            let scene = moved(scene, V(0.0, -0.5 * s, 0.0));
+            hand(scene, |p| Pose { tip: p.tip + 5.0 * s, roll: p.roll + 1.5 * s, ..p })
+        }
+    }
+}

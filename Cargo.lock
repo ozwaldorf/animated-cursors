@@ -67,6 +67,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "hand-cursors"
+version = "0.1.0"
+dependencies = [
+ "cursor-core",
+ "tiny-skia",
+]
+
+[[package]]
 name = "log"
 version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -9,6 +9,7 @@ support it and plain animated cursors everywhere else.
   - [Shapes](#shapes-animated_shapes_cursors)
   - [Dot](#dot-animated_dot_cursors)
   - [Fluid](#fluid-animated_fluid_cursors)
+  - [Hand](#hand-animated_hand_cursors)
 - [Build](#build)
 - [License](#license)
 
@@ -24,6 +25,7 @@ for the spec and a Niri patch.
 | Shapes | <img src="previews/palettes/shapes-carburetor.gif" alt="shapes in carburetor" width="240"> | <img src="previews/palettes/shapes-catppuccin.gif" alt="shapes in catppuccin" width="240"> | <img src="previews/palettes/shapes-gruvbox.gif" alt="shapes in gruvbox" width="240"> |
 | Dot | <img src="previews/palettes/dot-carburetor.gif" alt="dot in carburetor" width="240"> | <img src="previews/palettes/dot-catppuccin.gif" alt="dot in catppuccin" width="240"> | <img src="previews/palettes/dot-gruvbox.gif" alt="dot in gruvbox" width="240"> |
 | Fluid | <img src="previews/palettes/fluid-carburetor.gif" alt="fluid in carburetor" width="240"> | <img src="previews/palettes/fluid-catppuccin.gif" alt="fluid in catppuccin" width="240"> | <img src="previews/palettes/fluid-gruvbox.gif" alt="fluid in gruvbox" width="240"> |
+| Hand | <img src="previews/palettes/hand-carburetor.gif" alt="hand in carburetor" width="240"> | <img src="previews/palettes/hand-catppuccin.gif" alt="hand in catppuccin" width="240"> | <img src="previews/palettes/hand-gruvbox.gif" alt="hand in gruvbox" width="240"> |
 
 Pick one with `--palette carburetor|catppuccin|gruvbox` or a path to your own
 `role = #rrggbb` file (see `crates/<theme>/colors`). With the flake:
@@ -108,12 +110,36 @@ Liquid metaballs.
 | <img src="previews/fluid/grabbing-to-not-allowed.gif" alt="grabbing / not-allowed" width="96"><br><sub>grabbing / not-allowed</sub> | <img src="previews/fluid/pointer-to-text.gif" alt="pointer / text" width="96"><br><sub>pointer / text</sub> | <img src="previews/fluid/text-to-col-resize.gif" alt="text / col-resize" width="96"><br><sub>text / col-resize</sub> | <img src="previews/fluid/text-to-ew-resize.gif" alt="text / ew-resize" width="96"><br><sub>text / ew-resize</sub> | <img src="previews/fluid/text-to-nesw-resize.gif" alt="text / nesw-resize" width="96"><br><sub>text / nesw-resize</sub> |
 | <img src="previews/fluid/text-to-ns-resize.gif" alt="text / ns-resize" width="96"><br><sub>text / ns-resize</sub> | <img src="previews/fluid/text-to-nwse-resize.gif" alt="text / nwse-resize" width="96"><br><sub>text / nwse-resize</sub> | <img src="previews/fluid/text-to-vertical-text.gif" alt="text / vertical-text" width="96"><br><sub>text / vertical-text</sub> | <img src="previews/fluid/zoom-in-to-zoom-out.gif" alt="zoom-in / zoom-out" width="96"><br><sub>zoom-in / zoom-out</sub> |  |
 
+### Hand (`animated_hand_cursors`)
+
+Cel-shaded 3D gloves after Master Hand.
+
+#### Cursors
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/hand/default.gif" alt="default" width="96"><br><sub>default</sub> | <img src="previews/hand/pointer.gif" alt="pointer" width="96"><br><sub>pointer</sub> | <img src="previews/hand/text.gif" alt="text" width="96"><br><sub>text</sub> | <img src="previews/hand/vertical-text.gif" alt="vertical-text" width="96"><br><sub>vertical-text</sub> | <img src="previews/hand/wait.gif" alt="wait" width="96"><br><sub>wait</sub> |
+| <img src="previews/hand/progress.gif" alt="progress" width="96"><br><sub>progress</sub> | <img src="previews/hand/grab.gif" alt="grab" width="96"><br><sub>grab</sub> | <img src="previews/hand/grabbing.gif" alt="grabbing" width="96"><br><sub>grabbing</sub> | <img src="previews/hand/copy.gif" alt="copy" width="96"><br><sub>copy</sub> | <img src="previews/hand/no-drop.gif" alt="no-drop" width="96"><br><sub>no-drop</sub> |
+| <img src="previews/hand/not-allowed.gif" alt="not-allowed" width="96"><br><sub>not-allowed</sub> | <img src="previews/hand/zoom-in.gif" alt="zoom-in" width="96"><br><sub>zoom-in</sub> | <img src="previews/hand/zoom-out.gif" alt="zoom-out" width="96"><br><sub>zoom-out</sub> | <img src="previews/hand/col-resize.gif" alt="col-resize" width="96"><br><sub>col-resize</sub> | <img src="previews/hand/ew-resize.gif" alt="ew-resize" width="96"><br><sub>ew-resize</sub> |
+| <img src="previews/hand/ns-resize.gif" alt="ns-resize" width="96"><br><sub>ns-resize</sub> | <img src="previews/hand/nesw-resize.gif" alt="nesw-resize" width="96"><br><sub>nesw-resize</sub> | <img src="previews/hand/nwse-resize.gif" alt="nwse-resize" width="96"><br><sub>nwse-resize</sub> | <img src="previews/hand/crosshair.gif" alt="crosshair" width="96"><br><sub>crosshair</sub> | |
+
+#### Transitions
+
+| | | | | |
+| --- | --- | --- | --- | --- |
+| <img src="previews/hand/default-to-col-resize.gif" alt="default / col-resize" width="96"><br><sub>default / col-resize</sub> | <img src="previews/hand/default-to-crosshair.gif" alt="default / crosshair" width="96"><br><sub>default / crosshair</sub> | <img src="previews/hand/default-to-ew-resize.gif" alt="default / ew-resize" width="96"><br><sub>default / ew-resize</sub> | <img src="previews/hand/default-to-grab.gif" alt="default / grab" width="96"><br><sub>default / grab</sub> | <img src="previews/hand/default-to-grabbing.gif" alt="default / grabbing" width="96"><br><sub>default / grabbing</sub> |
+| <img src="previews/hand/default-to-nesw-resize.gif" alt="default / nesw-resize" width="96"><br><sub>default / nesw-resize</sub> | <img src="previews/hand/default-to-ns-resize.gif" alt="default / ns-resize" width="96"><br><sub>default / ns-resize</sub> | <img src="previews/hand/default-to-nwse-resize.gif" alt="default / nwse-resize" width="96"><br><sub>default / nwse-resize</sub> | <img src="previews/hand/default-to-pointer.gif" alt="default / pointer" width="96"><br><sub>default / pointer</sub> | <img src="previews/hand/default-to-progress.gif" alt="default / progress" width="96"><br><sub>default / progress</sub> |
+| <img src="previews/hand/default-to-text.gif" alt="default / text" width="96"><br><sub>default / text</sub> | <img src="previews/hand/default-to-wait.gif" alt="default / wait" width="96"><br><sub>default / wait</sub> | <img src="previews/hand/grab-to-grabbing.gif" alt="grab / grabbing" width="96"><br><sub>grab / grabbing</sub> | <img src="previews/hand/grabbing-to-copy.gif" alt="grabbing / copy" width="96"><br><sub>grabbing / copy</sub> | <img src="previews/hand/grabbing-to-no-drop.gif" alt="grabbing / no-drop" width="96"><br><sub>grabbing / no-drop</sub> |
+| <img src="previews/hand/grabbing-to-not-allowed.gif" alt="grabbing / not-allowed" width="96"><br><sub>grabbing / not-allowed</sub> | <img src="previews/hand/pointer-to-text.gif" alt="pointer / text" width="96"><br><sub>pointer / text</sub> | <img src="previews/hand/text-to-col-resize.gif" alt="text / col-resize" width="96"><br><sub>text / col-resize</sub> | <img src="previews/hand/text-to-ew-resize.gif" alt="text / ew-resize" width="96"><br><sub>text / ew-resize</sub> | <img src="previews/hand/text-to-nesw-resize.gif" alt="text / nesw-resize" width="96"><br><sub>text / nesw-resize</sub> |
+| <img src="previews/hand/text-to-ns-resize.gif" alt="text / ns-resize" width="96"><br><sub>text / ns-resize</sub> | <img src="previews/hand/text-to-nwse-resize.gif" alt="text / nwse-resize" width="96"><br><sub>text / nwse-resize</sub> | <img src="previews/hand/text-to-vertical-text.gif" alt="text / vertical-text" width="96"><br><sub>text / vertical-text</sub> | <img src="previews/hand/zoom-in-to-zoom-out.gif" alt="zoom-in / zoom-out" width="96"><br><sub>zoom-in / zoom-out</sub> |  |
+
 ## Build
 
 ```sh
 nix build .#shapes                       # theme in result/share/icons
 nix build .#dot
 nix build .#fluid
+nix build .#hand
 nix build .#fluid-catppuccin             # every theme has -catppuccin and -gruvbox
 nix build .#niri --out-link result-niri  # patched Niri 26.04
 ```

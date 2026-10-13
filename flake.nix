@@ -69,6 +69,7 @@
           ids = {
             dot = "animated_dot_cursors";
             fluid = "animated_fluid_cursors";
+            hand = "animated_hand_cursors";
             shapes = "animated_shapes_cursors";
           };
           # <style> is carburetor; <style>-<palette> installs as <id>_<palette>.

@@ -1,0 +1,10 @@
+[package]
+name = "hand-cursors"
+description = "Cel-shaded 3D glove cursors after Master Hand"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cursor-core.workspace = true
+tiny-skia.workspace = true

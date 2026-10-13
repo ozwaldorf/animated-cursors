@@ -140,7 +140,7 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
             let thrust = bump(u, 0.05, 0.3) + bump(u, 0.5, 0.3);
             let tip = p.place(index_tip(&p));
             let along = (tip - p.place(reach_root(0))).normalized();
-            let pushed = Pose { at: p.at + along * (1.2 * thrust), size: p.size * (1.0 - 0.04 * thrust), ..p };
+            let pushed = Pose { at: p.at + along * (1.2 * thrust), ..p };
             let mut flex = pushed.flex;
             flex[0] = reach(&pushed, 0, tip);
             Pose { flex, ..pushed }

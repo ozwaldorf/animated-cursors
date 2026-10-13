@@ -65,11 +65,12 @@ fn palm_down(pose: Pose) -> Pose {
     centered(Pose { turn: pose.turn - 180.0, tip: 10.0, ..pose }, 0.0, 1.0, ORIGIN)
 }
 
-/// The pointing hand turned to show its thumb, the index curving a little at
-/// rest, bent joint by joint as the poke bends it further.
+/// The pointing hand turned to show its thumb, the index curled down a little
+/// at rest so its tip can lift to tap, bent joint by joint as the poke bends
+/// it further.
 fn pointing() -> Pose {
     let mut flex = [[0.0; 3]; 4];
-    flex[0] = [4.0, 10.0, 7.0];
+    flex[0] = [10.0, 24.0, 16.8];
     Pose { turn: 30.0, flex, ..point() }
 }
 

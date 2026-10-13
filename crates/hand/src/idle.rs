@@ -4,7 +4,7 @@
 use std::f32::consts::PI;
 
 use cursor_core::Shape;
-use cursor_core::motion::{bump, ease, wobble};
+use cursor_core::motion::{bump, ease, window, wobble};
 
 use crate::rig::{GRIP, Pose, Prop, Scene, index_tip, reach, reach_root};
 use crate::vector::{Rot, V};
@@ -83,6 +83,8 @@ pub fn pattern(shape: Shape) -> Vec<Option<usize>> {
             None,
             Some(1),
         ],
+        Shape::Pointer => vec![Some(1), Some(0), Some(1), Some(1), Some(0)],
+        Shape::Grab => vec![Some(0), Some(2), Some(1), Some(0), Some(1), Some(2), Some(1)],
         _ => vec![Some(0)],
     }
 }
@@ -122,6 +124,14 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
                 }
             }
         }),
+        // A tap: the index straightens to lift its tip off the hotspot, then
+        // strikes back down and bounces once.
+        Shape::Pointer if variant == 1 => hand(rest, |p| {
+            let lift = ease(window(u, (0.0, 0.5))) - ease(window(u, (0.55, 0.68))) + 0.15 * bump(u, 0.68, 0.2);
+            let mut flex = p.flex;
+            flex[0] = p.flex[0].map(|bend| bend * (1.0 - 0.9 * lift));
+            Pose { flex, ..p }
+        }),
         // Two quick pokes: the hand thrusts along the finger into the screen
         // while the fingertip stays planted on the hotspot, so the finger
         // flexes under the press.
@@ -142,10 +152,25 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
         | Shape::NeswResize
         | Shape::NwseResize
         | Shape::ColResize => rolled(rest, 16.0 * wobble(u, 2.0)),
-        // Fingers wave one after another as the hand rocks.
-        Shape::Grab => hand(rest, |p| {
-            let wave = curled(p, |i| 0.15 * bump(u, 0.1 * i as f32, 0.45));
-            Pose { turn: p.turn + 10.0 * wobble(u, 1.5), ..wave }
+        // By turns, fingers wave one after another as the hand rocks, all four
+        // beckon twice together, and the hand stretches wide open.
+        Shape::Grab => hand(rest, |p| match variant {
+            0 => {
+                let wave = curled(p, |i| 0.15 * bump(u, 0.1 * i as f32, 0.45));
+                Pose { turn: p.turn + 10.0 * wobble(u, 1.5), ..wave }
+            }
+            1 => {
+                let beckon = bump(u, 0.05, 0.4) + bump(u, 0.5, 0.4);
+                Pose { thumb: [p.thumb[0] - 10.0 * beckon, p.thumb[1], p.thumb[2]], ..curled(p, |_| 0.45 * beckon) }
+            }
+            _ => {
+                let stretch = bump(u, 0.0, 1.0);
+                Pose {
+                    spread: p.spread.map(|s| s * (1.0 + 0.7 * stretch)),
+                    thumb: [p.thumb[0] + 20.0 * stretch, p.thumb[1], p.thumb[2]],
+                    ..curled(p, |_| -0.1 * stretch)
+                }
+            }
         }),
         Shape::Grabbing => hand(rest, |p| Pose { roll: p.roll + 8.0 * shake(u, 3.0), ..p }),
         // The badge flips over as the fist bobs.

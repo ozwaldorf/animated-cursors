@@ -279,35 +279,56 @@ const BUSY_DELAY: u32 = 30;
 /// Length of a resting frame in milliseconds, while the hand hovers.
 const REST_STEP: u32 = 100;
 
-/// Frames of an ordinary cursor: a busy loop, or hovering rests each followed
-/// by an idle gesture, the hover carrying on through them.
-pub fn frames(shape: Shape) -> Vec<(Scene, u32)> {
+/// Frames of an ordinary cursor and the order they play in: a busy loop, or
+/// the segments of its idle pattern, each a hovering rest and perhaps a
+/// gesture. Each distinct segment is posed once and played wherever the
+/// pattern repeats it, its hover starting afresh so the repeats match.
+pub fn frames(shape: Shape) -> (Vec<(Scene, u32)>, Vec<usize>) {
     if shape.is_busy() {
-        return (0..BUSY_FRAMES).map(|i| (scene(shape, i as f32 / BUSY_FRAMES as f32), BUSY_DELAY)).collect();
+        let frames: Vec<_> =
+            (0..BUSY_FRAMES).map(|i| (scene(shape, i as f32 / BUSY_FRAMES as f32), BUSY_DELAY)).collect();
+        return (frames, (0..BUSY_FRAMES).collect());
     }
     let (hold, count) = idle::timing(shape);
     let rest = scene(shape, 0.0);
-    // Each gesture in turn after a rest, the hand hovering throughout.
-    let steps: Vec<(Option<(f32, usize)>, u32)> = (0..idle::variants(shape))
-        .flat_map(|variant| {
-            let resting = (0..hold / REST_STEP).map(|_| (None, REST_STEP));
-            resting.chain((1..count).map(move |i| (Some((i as f32 / count as f32, variant)), idle::STEP)))
+    let pattern = idle::pattern(shape);
+    let mut segments: Vec<Option<usize>> = Vec::new();
+    for segment in &pattern {
+        if !segments.contains(segment) {
+            segments.push(*segment);
+        }
+    }
+    let (mut frames, mut spans) = (Vec::new(), Vec::new());
+    for segment in &segments {
+        let resting = match segment {
+            Some(_) => hold,
+            None => idle::BOB,
+        };
+        let gesture = segment.map_or(0, |_| count - 1);
+        let steps: Vec<(Option<f32>, u32)> = (0..resting / REST_STEP)
+            .map(|_| (None, REST_STEP))
+            .chain((1..=gesture).map(|i| (Some(i as f32 / count as f32), idle::STEP)))
+            .collect();
+        let length: u32 = steps.iter().map(|(_, delay)| delay).sum();
+        spans.push((frames.len(), steps.len()));
+        let mut time = 0;
+        for (u, delay) in steps {
+            let posed = match (u, segment) {
+                (Some(u), Some(variant)) => idle::gesture(shape, rest.clone(), u, *variant),
+                _ => rest.clone(),
+            };
+            frames.push((idle::hover(shape, posed, time as f32 / length as f32, length), delay));
+            time += delay;
+        }
+    }
+    let order = pattern
+        .iter()
+        .flat_map(|segment| {
+            let (start, len) = spans[segments.iter().position(|s| s == segment).expect("segment posed")];
+            start..start + len
         })
         .collect();
-    let total: u32 = steps.iter().map(|(_, delay)| delay).sum();
-    let mut time = 0;
-    steps
-        .into_iter()
-        .map(|(gesture, delay)| {
-            let posed = match gesture {
-                Some((u, variant)) => idle::gesture(shape, rest.clone(), u, variant),
-                None => rest.clone(),
-            };
-            let frame = idle::hover(shape, posed, time as f32 / total as f32);
-            time += delay;
-            (frame, delay)
-        })
-        .collect()
+    (frames, order)
 }
 
 #[cfg(test)]

@@ -40,7 +40,11 @@ impl Theme for Hand {
     }
 
     fn cursor(&self, shape: Shape) -> Vec<Frame<Scene>> {
-        cursors::frames(shape).into_iter().map(|(scene, delay)| Frame { scene, delay }).collect()
+        cursors::frames(shape).0.into_iter().map(|(scene, delay)| Frame { scene, delay }).collect()
+    }
+
+    fn order(&self, shape: Shape) -> Vec<usize> {
+        cursors::frames(shape).1
     }
 
     fn transition(&self, from: Shape, to: Shape, t: f32) -> Scene {

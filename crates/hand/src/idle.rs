@@ -61,9 +61,30 @@ fn shake(u: f32, cycles: f32) -> f32 {
     (PI * 2.0 * cycles * u).sin() * (1.0 - u)
 }
 
-/// Idle gestures in turn, each after a rest.
-pub fn variants(shape: Shape) -> usize {
-    if shape == Shape::Default { 3 } else { 1 }
+/// Segments of the idle loop in play order: `Some(variant)` rests then plays
+/// that gesture, `None` only rests for one hover bob. Each distinct segment
+/// is stored once, so a long, shuffled pattern costs no more than its parts.
+pub fn pattern(shape: Shape) -> Vec<Option<usize>> {
+    match shape {
+        Shape::Default => vec![
+            Some(0),
+            None,
+            Some(2),
+            Some(1),
+            None,
+            None,
+            Some(0),
+            Some(2),
+            None,
+            Some(1),
+            Some(0),
+            None,
+            Some(2),
+            None,
+            Some(1),
+        ],
+        _ => vec![Some(0)],
+    }
 }
 
 /// The idle gesture `variant` of `rest`, the cursor's resting scene, at
@@ -142,15 +163,14 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
     }
 }
 
-/// Milliseconds per hover bob, roughly; each loop fits whole bobs.
-const BOB: f32 = 2200.0;
+/// Milliseconds per hover bob, roughly; each segment fits whole bobs.
+pub const BOB: u32 = 2200;
 
-/// The scene floating at `phase` in [0, 1) of an idle loop: pointing hands
-/// sway on their fingertip, the rest bob up and down with what they hold.
-pub fn hover(shape: Shape, scene: Scene, phase: f32) -> Scene {
-    let (hold, count) = timing(shape);
-    let length = (variants(shape) as u32 * (hold + (count as u32 - 1) * STEP)) as f32;
-    let cycles = (length / BOB).round().max(1.0);
+/// The scene floating at `phase` in [0, 1) of an idle segment `length`
+/// milliseconds long: the pointer sways on its fingertip, default drifts
+/// around the hotspot, and the rest bob up and down with what they hold.
+pub fn hover(shape: Shape, scene: Scene, phase: f32, length: u32) -> Scene {
+    let cycles = (length as f32 / BOB as f32).round().max(1.0);
     let (s, c) = (2.0 * PI * cycles * phase).sin_cos();
     match shape {
         Shape::Pointer => {

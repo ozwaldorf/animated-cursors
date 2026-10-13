@@ -61,6 +61,12 @@ pub trait Theme: Sync {
     /// Frames of an ordinary cursor; more than one makes it loop.
     fn cursor(&self, shape: Shape) -> Vec<Frame<Self::Scene>>;
 
+    /// Play order of an ordinary cursor's frames, as indices into `cursor`.
+    /// Frames may repeat, so a long loop stores each distinct frame once.
+    fn order(&self, shape: Shape) -> Vec<usize> {
+        (0..self.cursor(shape).len()).collect()
+    }
+
     /// The scene at progress `t` in (0, 1) of the transition from `from` to
     /// `to`. Both endpoints are the cursors' first frames. Playing it
     /// backwards should match the transition from `to` to `from`.
@@ -117,10 +123,12 @@ pub fn measure<T: Theme>(theme: &T, scene: &T::Scene) -> Bounds {
     )
 }
 
-/// Frames with the bounds each frame's hotspot is placed to center.
+/// Frames with the bounds each frame's hotspot is placed to center, and
+/// the order they play in.
 pub struct Sequence<S> {
     pub frames: Vec<Frame<S>>,
     pub bounds: Vec<Bounds>,
+    pub order: Vec<usize>,
 }
 
 /// One scale for a whole theme, fitted to its largest frame.
@@ -148,7 +156,7 @@ impl Fit {
 pub fn cursor_sequence<T: Theme>(theme: &T, shape: Shape) -> Sequence<T::Scene> {
     let frames = theme.cursor(shape);
     let union = frames.iter().fold(Bounds::EMPTY, |bounds, frame| bounds.union(measure(theme, &frame.scene)));
-    Sequence { bounds: vec![union; frames.len()], frames }
+    Sequence { bounds: vec![union; frames.len()], frames, order: theme.order(shape) }
 }
 
 /// Endpoints are the cursors' first frames with their hotspots, so they match
@@ -174,7 +182,7 @@ pub fn transition_sequence<T: Theme>(
             (Frame { scene, delay: TRANSITION_DELAY }, bounds)
         })
         .unzip();
-    Sequence { frames, bounds }
+    Sequence { frames, bounds, order: (0..TRANSITION_FRAMES).collect() }
 }
 
 /// Renders a scene on a `size` square at `scale` pixels per design unit, with
@@ -246,7 +254,7 @@ fn preview<T: Theme>(
         let hold = |index: usize, end: usize| if index == end { 40 } else { 2 };
         (0..=last).map(|i| (i, hold(i, last))).chain((0..=last).rev().map(|i| (i, hold(i, 0)))).collect()
     } else {
-        sequence.frames.iter().enumerate().map(|(i, frame)| (i, (frame.delay / 10).max(2) as u16)).collect()
+        sequence.order.iter().map(|&i| (i, (sequence.frames[i].delay / 10).max(2) as u16)).collect()
     };
     let (frames, delays): (Vec<&Pixmap>, Vec<u16>) =
         sequence.into_iter().map(|(i, delay)| (&pixmaps[i], delay)).unzip();
@@ -427,7 +435,11 @@ pub fn generate<T: Theme>(theme: &T, output: &Path, previews: Option<&Path>, siz
         .collect();
     parallel(&jobs, |(name, sequence, transition)| {
         let images: Vec<Image> = sizes.iter().flat_map(|&size| images(theme, sequence, fit, size)).collect();
-        fs::write(cursors.join(name), encode(&images))?;
+        // Each size plays the frames in order, repeats pointing at one image.
+        let count = sequence.frames.len();
+        let entries: Vec<usize> =
+            (0..sizes.len()).flat_map(|block| sequence.order.iter().map(move |&i| block * count + i)).collect();
+        fs::write(cursors.join(name), encode(&images, &entries))?;
         match previews {
             Some(directory) => preview(theme, sequence, fit, *transition, &directory.join(format!("{name}.gif"))),
             _ => Ok(()),

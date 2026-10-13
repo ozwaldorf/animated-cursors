@@ -17,18 +17,21 @@ pub struct Image {
     pub pixels: Vec<u32>,
 }
 
-pub fn encode(images: &[Image]) -> Vec<u8> {
-    let mut toc = Vec::new();
+/// Writes `images`, each stored once, with a table entry for each index in
+/// `entries` in turn, so a frame can play several times in one loop.
+pub fn encode(images: &[Image], entries: &[usize]) -> Vec<u8> {
+    let mut positions = Vec::with_capacity(images.len());
     let mut chunks = Vec::new();
-    let mut position = FILE_HEADER + 12 * images.len() as u32;
+    let mut position = FILE_HEADER + 12 * entries.len() as u32;
     for image in images {
-        toc.extend([IMAGE, image.size, position]);
+        positions.push(position);
         let header =
             [IMAGE_HEADER, IMAGE, image.size, 1, image.width, image.height, image.xhot, image.yhot, image.delay];
         chunks.extend(header.into_iter().chain(image.pixels.iter().copied()));
         position += IMAGE_HEADER + 4 * image.pixels.len() as u32;
     }
-    [MAGIC, FILE_HEADER, VERSION, images.len() as u32]
+    let toc = entries.iter().flat_map(|&i| [IMAGE, images[i].size, positions[i]]);
+    [MAGIC, FILE_HEADER, VERSION, entries.len() as u32]
         .into_iter()
         .chain(toc)
         .chain(chunks)
@@ -65,8 +68,20 @@ mod tests {
             Image { size: 2, width: 2, height: 1, xhot: 1, yhot: 0, delay: 5, pixels: vec![1, 0xff00_0000] },
             Image { size: 3, width: 1, height: 1, xhot: 0, yhot: 0, delay: 7, pixels: vec![42] },
         ];
-        let data = encode(&images);
+        let data = encode(&images, &[0, 1]);
         assert_eq!(&data[..4], b"Xcur");
         assert_eq!(decode(&data), Some(images));
+    }
+
+    #[test]
+    fn repeats_share_one_image() {
+        let images = vec![
+            Image { size: 2, width: 1, height: 1, xhot: 0, yhot: 0, delay: 5, pixels: vec![7] },
+            Image { size: 2, width: 1, height: 1, xhot: 0, yhot: 0, delay: 5, pixels: vec![9] },
+        ];
+        let (once, repeated) = (encode(&images, &[0, 1]), encode(&images, &[0, 1, 0, 0]));
+        assert_eq!(repeated.len(), once.len() + 2 * 12);
+        let played = decode(&repeated).unwrap();
+        assert_eq!(played, vec![images[0].clone(), images[1].clone(), images[0].clone(), images[0].clone()]);
     }
 }

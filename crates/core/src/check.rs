@@ -67,7 +67,7 @@ fn generated<T: Theme>(theme: &T) {
 
     let shapes: HashMap<Shape, _> = Shape::ALL.into_iter().map(|shape| (shape, read(&cursors, shape.name()))).collect();
     for (shape, sizes) in &shapes {
-        let expected = theme.cursor(*shape).len();
+        let expected = theme.order(*shape).len();
         assert_eq!(sizes.len(), SIZES.len(), "{shape:?}");
         for (size, frames) in sizes {
             let context = format!("{shape:?} at {size}");

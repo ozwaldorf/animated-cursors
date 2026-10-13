@@ -145,14 +145,23 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
             flex[0] = reach(&pushed, 0, tip);
             Pose { flex, ..pushed }
         }),
-        // The hand waggles the caret or arrow in its grip.
-        Shape::Text
-        | Shape::VerticalText
-        | Shape::EwResize
-        | Shape::NsResize
-        | Shape::NeswResize
-        | Shape::NwseResize
-        | Shape::ColResize => rolled(rest, 16.0 * wobble(u, 2.0)),
+        // The flat hand chops twice: each time it snaps toward the viewer from
+        // the wrist and down, and after the second it pulls back with a little
+        // bounce.
+        Shape::Text | Shape::VerticalText => hand(rest, |p| {
+            let chop =
+                |start: f32| ease(window(u, (start, start + 0.08))) - ease(window(u, (start + 0.08, start + 0.22)));
+            let strike = chop(0.05) + chop(0.3);
+            let back = window(u, (0.52, 0.95));
+            let bounce = 0.3 * (TAU * 2.0 * back).sin() * (1.0 - back);
+            let wrist = V(0.0, 2.4, 0.0);
+            let chopped = Pose { tip: p.tip - 40.0 * strike, ..p }.pinned(wrist, p.place(wrist));
+            Pose { at: chopped.at + V(0.0, strike + bounce, 0.0), ..chopped }
+        }),
+        // The hand waggles the arrow in its grip.
+        Shape::EwResize | Shape::NsResize | Shape::NeswResize | Shape::NwseResize | Shape::ColResize => {
+            rolled(rest, 16.0 * wobble(u, 2.0))
+        }
         // By turns, fingers wave one after another as the hand rocks, all four
         // beckon twice together, and the hand stretches wide open.
         Shape::Grab => hand(rest, |p| match variant {

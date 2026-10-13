@@ -15,6 +15,8 @@ use crate::vector::V;
 const ORIGIN: V = V(0.0, 0.0, 0.0);
 /// Middle of the hand's silhouette, in its own frame.
 const MIDDLE: V = V(0.0, -1.6, 0.0);
+/// Middle of the fingers held straight, in the hand's frame.
+pub const FINGERS: V = V(0.0, -3.4, 0.0);
 
 /// Index finger out, the others curled, back of the hand to the viewer.
 fn point() -> Pose {
@@ -147,19 +149,29 @@ fn bar(kind: Kind, angle: f32, along: f32, size: f32) -> Scene {
     grasped(prop(kind, ORIGIN, upright(angle)), V(along, 0.0, 0.0), angle, size)
 }
 
-/// Arrows held by the lower or left half of their shaft, as the caret is.
+/// Arrows held by the lower or left half of their shaft.
 fn resize(angle: f32) -> Scene {
     bar(Kind::Arrows { split: 0.0 }, angle, -3.0, 0.75)
 }
 
-/// The column divider held by the lower half of its bar, as the caret is.
+/// The column divider held by the lower half of its bar.
 fn split() -> Scene {
     bar(Kind::Columns, 90.0, -4.6, 0.65)
 }
 
-/// The caret held by the lower or left half of its stem.
-fn text(roll: f32) -> Scene {
-    bar(Kind::Beam, roll + 90.0, -2.9, 0.7)
+/// The hand itself as the caret: flat and edge on, fingers together, the
+/// thumb side to the viewer with the thumb eased off the hand, rolled by
+/// `roll` and centered on its fingers.
+fn blade(roll: f32) -> Pose {
+    let flat = Pose {
+        turn: 90.0,
+        tip: 0.0,
+        spread: [-2.0, 0.0, 2.0, 4.0],
+        curl: [0.0; 4],
+        thumb: [35.0, 10.0, 0.15],
+        ..point()
+    };
+    Pose { roll, size: 0.86, ..flat }.pinned(FINGERS, ORIGIN)
 }
 
 /// A ring of `radius` held at its rim at `degrees` from the center, the grip
@@ -263,8 +275,9 @@ pub fn scene(shape: Shape, phase: f32) -> Scene {
         Shape::Pointer => bare(aimed(pointing(), -6.0, 1.0, ORIGIN)),
         Shape::Progress => progress(phase),
         Shape::Wait => wait(phase),
-        Shape::Text => text(0.0),
-        Shape::VerticalText => text(90.0),
+        Shape::Text => bare(blade(0.0)),
+        // Palm down, fingers pointing left.
+        Shape::VerticalText => bare(blade(-90.0)),
         Shape::EwResize => resize(0.0),
         Shape::NsResize => resize(90.0),
         Shape::NeswResize => resize(-45.0),

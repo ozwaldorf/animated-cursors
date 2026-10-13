@@ -1,7 +1,7 @@
 //! Idle loops: each cursor rests, then plays a short gesture that ends where
 //! it started. Spins turn by a symmetry of the prop, so loops close.
 
-use std::f32::consts::PI;
+use std::f32::consts::{PI, TAU};
 
 use cursor_core::Shape;
 use cursor_core::motion::{bump, ease, window, wobble};
@@ -17,7 +17,8 @@ pub fn timing(shape: Shape) -> (u32, usize) {
     match shape {
         Shape::Default => (1600, 30),
         Shape::Text | Shape::VerticalText => (1800, 28),
-        Shape::Pointer | Shape::Grab | Shape::Copy | Shape::NotAllowed => (1200, 28),
+        Shape::Pointer | Shape::Grab | Shape::Copy => (1200, 28),
+        Shape::NotAllowed => (0, 54),
         _ => (1400, 24),
     }
 }
@@ -179,8 +180,20 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
             hand(scene, |p| Pose { tip: p.tip - 20.0 * bump(u, 0.0, 1.0), ..p })
         }
         Shape::NoDrop => moved(rest, V(1.2 * shake(u, 3.0), 0.0, 0.0)),
-        // The hand thrusts the sign forward.
-        Shape::NotAllowed => hand(rest, |p| Pose { tip: p.tip - 25.0 * bump(u, 0.0, 0.5), ..p }),
+        // The raised finger wags steadily from its knuckle, lingering at each
+        // side and snapping through the middle, bending a little as it whips.
+        // The hand tilts a little after it.
+        Shape::NotAllowed => hand(rest, |p| {
+            let angle = TAU * 3.0 * u;
+            let swing = angle.sin().signum() * angle.sin().abs().powf(0.6);
+            let mut spread = p.spread;
+            spread[0] += swing * if swing > 0.0 { 22.0 } else { 16.0 };
+            let mut flex = p.flex;
+            let whip = [0.0, 4.0, 2.8].map(|bend| bend * angle.cos().powi(2));
+            flex[0] = std::array::from_fn(|j| p.flex[0][j] + whip[j]);
+            let knuckle = p.place(reach_root(0));
+            Pose { spread, flex, roll: p.roll + 3.0 * (angle - 0.6).sin(), ..p }.pinned(reach_root(0), knuckle)
+        }),
         // The hand sweeps the reticle around, as if taking aim.
         Shape::Crosshair => rolled(rest, 14.0 * wobble(u, 1.5)),
         Shape::ZoomIn | Shape::ZoomOut => rolled(rest, 12.0 * wobble(u, 2.0)),

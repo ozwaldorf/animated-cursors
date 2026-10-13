@@ -116,6 +116,14 @@ fn holding(at: V, angle: f32, size: f32) -> Pose {
     Pose { roll: upright(angle), size, ..hold() }.pinned(GRIP, at)
 }
 
+/// The index raised and bent slightly, the others curled, back of the hand
+/// to the viewer, its knuckle on the hotspot so the finger wags about it.
+fn wagging() -> Pose {
+    let mut flex = [[0.0; 3]; 4];
+    flex[0] = [6.0, 14.0, 9.8];
+    Pose { turn: -10.0, tip: 5.0, flex, ..point() }.pinned(reach_root(0), ORIGIN)
+}
+
 /// Point at `radius` and `degrees` from the hotspot.
 fn around(radius: f32, degrees: f32) -> V {
     let (s, c) = degrees.to_radians().sin_cos();
@@ -268,7 +276,7 @@ pub fn scene(shape: Shape, phase: f32) -> Scene {
         Shape::Grabbing => bare(palm_down(fist())),
         Shape::Copy => badged(Kind::Badge),
         Shape::NoDrop => badged(Kind::Ban),
-        Shape::NotAllowed => rimmed(Kind::Ban, 5.4, 135.0, 0.7),
+        Shape::NotAllowed => bare(wagging()),
         Shape::Crosshair => rimmed(Kind::Reticle, 4.8, 45.0, 0.6),
         Shape::ZoomIn => lens(1.0, 1.0),
         Shape::ZoomOut => lens(0.8, 0.0),
@@ -305,10 +313,11 @@ pub fn frames(shape: Shape) -> (Vec<(Scene, u32)>, Vec<usize>) {
             Some(_) => hold,
             None => idle::BOB,
         };
-        let gesture = segment.map_or(0, |_| count - 1);
+        // A gesture with no rest before it starts at rest itself, so it loops.
+        let gesture = segment.map_or(0..0, |_| usize::from(resting > 0)..count);
         let steps: Vec<(Option<f32>, u32)> = (0..resting / REST_STEP)
             .map(|_| (None, REST_STEP))
-            .chain((1..=gesture).map(|i| (Some(i as f32 / count as f32), idle::STEP)))
+            .chain(gesture.map(|i| (Some(i as f32 / count as f32), idle::STEP)))
             .collect();
         let length: u32 = steps.iter().map(|(_, delay)| delay).sum();
         spans.push((frames.len(), steps.len()));

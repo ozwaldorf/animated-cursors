@@ -7,8 +7,8 @@ use cursor_core::Shape;
 
 use crate::idle;
 use crate::rig::{
-    GRIP, HOLD_TIP, HOLD_TURN, Hold, Kind, Pose, Prop, Props, Scene, hips, index_tip, leg_length, prop, reach,
-    reach_root,
+    GRIP, HOLD_TIP, HOLD_TURN, Hold, Kind, Pose, Prop, Props, Scene, hips, index_tip, leg_length, palm_facing,
+    pinch_tip, prop, reach, reach_root,
 };
 use crate::vector::V;
 
@@ -143,20 +143,22 @@ fn grasped(prop: Prop, grip: V, angle: f32, size: f32) -> Scene {
     Scene { hand, props: vec![("prop", held)] }
 }
 
-/// An end to end symmetric bar through the hotspot along `angle`, held
-/// `along` its length; it takes the hand's roll.
-fn bar(kind: Kind, angle: f32, along: f32, size: f32) -> Scene {
-    grasped(prop(kind, ORIGIN, upright(angle)), V(along, 0.0, 0.0), angle, size)
-}
-
-/// Arrows held by the lower or left half of their shaft.
-fn resize(angle: f32) -> Scene {
-    bar(Kind::Arrows { split: 0.0 }, angle, -3.0, 0.75)
-}
-
-/// The column divider held by the lower half of its bar.
-fn split() -> Scene {
-    bar(Kind::Columns, 90.0, -4.6, 0.65)
+/// Fingers held together and bent at the knuckles to meet the thumb tip, like
+/// a beak, thumb side to the viewer, its tip on the hotspot and pointing
+/// along `heading`, in degrees on screen, across the line it drags along.
+fn pinch(heading: f32) -> Pose {
+    let beak = Pose {
+        turn: 90.0,
+        tip: 0.0,
+        spread: [-2.0, 0.0, 2.0, 4.0],
+        curl: [0.0; 4],
+        flex: [[96.0, 21.0, 14.7]; 4],
+        thumb: [30.0, 60.0, 0.4],
+        ..point()
+    };
+    let along = palm_facing(&beak);
+    let roll = heading - along.1.atan2(along.0).to_degrees();
+    Pose { roll, ..beak }.pinned(pinch_tip(&beak), ORIGIN)
 }
 
 /// The hand itself as the caret: flat and edge on, fingers together, the
@@ -278,11 +280,11 @@ pub fn scene(shape: Shape, phase: f32) -> Scene {
         Shape::Text => bare(blade(0.0)),
         // Palm down, fingers pointing left.
         Shape::VerticalText => bare(blade(-90.0)),
-        Shape::EwResize => resize(0.0),
-        Shape::NsResize => resize(90.0),
-        Shape::NeswResize => resize(-45.0),
-        Shape::NwseResize => resize(45.0),
-        Shape::ColResize => split(),
+        Shape::EwResize | Shape::ColResize => bare(pinch(-90.0)),
+        Shape::NsResize => bare(pinch(180.0)),
+        Shape::NeswResize => bare(pinch(-135.0)),
+        // Down and left, so the cuff stays low.
+        Shape::NwseResize => bare(pinch(135.0)),
         // The open hand hangs a little below the hotspot, so closing on it
         // reaches forward.
         Shape::Grab => bare(palm_down(open()).pinned(V(0.0, -4.0, 0.0), ORIGIN)),

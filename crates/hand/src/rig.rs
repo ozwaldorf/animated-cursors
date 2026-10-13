@@ -81,6 +81,9 @@ const THUMB_ROOT: V = V(-3.1, 0.9, -0.5);
 /// hand's frame.
 pub const GRIP: V = V(0.0, -2.52, -3.33);
 
+/// Base of the palm, where the hand bends at the wrist, in the hand's frame.
+pub const WRIST: V = V(0.0, 2.4, 0.0);
+
 /// Joints of finger `i` as (center, radius), knuckle to tip, in the hand's
 /// frame.
 fn finger(pose: &Pose, i: usize) -> [(V, f32); 4] {
@@ -125,6 +128,24 @@ pub fn fingertip(pose: &Pose, i: usize) -> V {
     let joints = finger(pose, i);
     let (end, radius) = joints[3];
     end + (end - joints[2].0).normalized() * radius
+}
+
+/// The very end of the thumb, in the hand's frame.
+pub fn thumb_tip(pose: &Pose) -> V {
+    let joints = thumb(pose);
+    let (end, radius) = joints[3];
+    end + (end - joints[2].0).normalized() * radius
+}
+
+/// Midway between the thumb and index tips, where they pinch, in the hand's
+/// frame.
+pub fn pinch_tip(pose: &Pose) -> V {
+    (thumb_tip(pose) + index_tip(pose)) * 0.5
+}
+
+/// Direction the palm faces, in world space.
+pub fn palm_facing(pose: &Pose) -> V {
+    pose.place(-V::Z) - pose.place(V::default())
 }
 
 /// The very end of the index finger, in the hand's frame.

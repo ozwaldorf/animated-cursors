@@ -6,7 +6,7 @@ use std::f32::consts::{PI, TAU};
 use cursor_core::Shape;
 use cursor_core::motion::{bump, ease, window, wobble};
 
-use crate::rig::{GRIP, Pose, Prop, Scene, index_tip, reach, reach_root};
+use crate::rig::{GRIP, Pose, Prop, Scene, WRIST, index_tip, palm_facing, reach, reach_root};
 use crate::vector::{Rot, V};
 
 /// Gesture frame length in milliseconds.
@@ -154,13 +154,17 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
             let strike = chop(0.05) + chop(0.3);
             let back = window(u, (0.52, 0.95));
             let bounce = 0.3 * (TAU * 2.0 * back).sin() * (1.0 - back);
-            let wrist = V(0.0, 2.4, 0.0);
-            let chopped = Pose { tip: p.tip - 40.0 * strike, ..p }.pinned(wrist, p.place(wrist));
+            let chopped = Pose { tip: p.tip - 40.0 * strike, ..p }.pinned(WRIST, p.place(WRIST));
             Pose { at: chopped.at + V(0.0, strike + bounce, 0.0), ..chopped }
         }),
-        // The hand waggles the arrow in its grip.
+        // The pinch tugs a short way across its beak and back, as if dragging
+        // an edge.
         Shape::EwResize | Shape::NsResize | Shape::NeswResize | Shape::NwseResize | Shape::ColResize => {
-            rolled(rest, 16.0 * wobble(u, 2.0))
+            hand(rest, |p| {
+                let beak = palm_facing(&p);
+                let drag = 1.2 * (TAU * u).sin() * bump(u, 0.0, 1.0).sqrt();
+                Pose { at: p.at + V(-beak.1, beak.0, 0.0).normalized() * drag, ..p }
+            })
         }
         // By turns, fingers wave one after another as the hand rocks, all four
         // beckon twice together, and the hand stretches wide open.

@@ -145,8 +145,9 @@ fn grasped(prop: Prop, grip: V, angle: f32, size: f32) -> Scene {
 
 /// Fingers held together and bent at the knuckles to meet the thumb tip, like
 /// a beak, thumb side to the viewer, its tip on the hotspot and pointing
-/// along `heading`, in degrees on screen, across the line it drags along.
-fn pinch(heading: f32) -> Pose {
+/// across `axis`, the line it drags along in degrees on screen. Of the two
+/// ways across, it takes the one that rolls the hand least from upright.
+fn pinch(axis: f32) -> Pose {
     let beak = Pose {
         turn: 90.0,
         tip: 0.0,
@@ -157,7 +158,9 @@ fn pinch(heading: f32) -> Pose {
         ..point()
     };
     let along = palm_facing(&beak);
-    let roll = heading - along.1.atan2(along.0).to_degrees();
+    let across = (axis + 90.0 - along.1.atan2(along.0).to_degrees()).rem_euclid(180.0);
+    // A tie rolls left, as default and pointer lean.
+    let roll = if across > 89.9 { across - 180.0 } else { across };
     Pose { roll, ..beak }.pinned(pinch_tip(&beak), ORIGIN)
 }
 
@@ -280,11 +283,10 @@ pub fn scene(shape: Shape, phase: f32) -> Scene {
         Shape::Text => bare(blade(0.0)),
         // Palm down, fingers pointing left.
         Shape::VerticalText => bare(blade(-90.0)),
-        Shape::EwResize | Shape::ColResize => bare(pinch(-90.0)),
-        Shape::NsResize => bare(pinch(180.0)),
-        Shape::NeswResize => bare(pinch(-135.0)),
-        // Down and left, so the cuff stays low.
-        Shape::NwseResize => bare(pinch(135.0)),
+        Shape::EwResize | Shape::ColResize => bare(pinch(0.0)),
+        Shape::NsResize => bare(pinch(90.0)),
+        Shape::NeswResize => bare(pinch(-45.0)),
+        Shape::NwseResize => bare(pinch(45.0)),
         // The open hand hangs a little below the hotspot, so closing on it
         // reaches forward.
         Shape::Grab => bare(palm_down(open()).pinned(V(0.0, -4.0, 0.0), ORIGIN)),

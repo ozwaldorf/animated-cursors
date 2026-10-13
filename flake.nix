@@ -29,8 +29,8 @@
               ) (lib.splitString "\n" (builtins.readFile file))
             );
           # Builds a theme crate in a bundled palette (crates/<style>/colors) with
-          # any `colors` roles replaced, checks the crate in that palette, then
-          # writes the theme. Override either with `.override { ... }`.
+          # any `colors` roles replaced, writes the theme, then checks the crate
+          # against what it wrote. Override either with `.override { ... }`.
           theme = lib.makeOverridable (
             {
               style,
@@ -48,7 +48,15 @@
             pkgs.rustPlatform.buildRustPackage {
               pname = "${style}-cursors-${palette}";
               version = "0.1.0";
-              src = self;
+              # Only the crates, so docs and previews don't rebuild themes.
+              src = lib.fileset.toSource {
+                root = ./.;
+                fileset = lib.fileset.unions [
+                  ./Cargo.toml
+                  ./Cargo.lock
+                  ./crates
+                ];
+              };
               cargoLock.lockFile = ./Cargo.lock;
               cargoBuildFlags = [
                 "-p"
@@ -59,8 +67,13 @@
                 "${style}-cursors"
               ];
               CURSOR_PALETTE = choice;
+              # The theme is rendered once, before the tests check it.
+              CURSOR_OUTPUT = "${placeholder "out"}/share/icons/${id}";
+              preCheck = ''
+                "$tmpDir/${style}-cursors" --palette ${choice} --output "$CURSOR_OUTPUT"
+              '';
               postInstall = ''
-                $out/bin/${style}-cursors --palette ${choice} --output "$out/share/icons/${id}"
+                [ -e "$CURSOR_OUTPUT" ] || $out/bin/${style}-cursors --palette ${choice} --output "$CURSOR_OUTPUT"
                 rm -r "$out/bin"
               '';
               meta.license = lib.licenses.gpl3Plus;

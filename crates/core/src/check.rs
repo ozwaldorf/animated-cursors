@@ -45,14 +45,20 @@ fn span(image: &Image) -> u32 {
 }
 
 /// Generates the theme in every bundled palette, or only in `CURSOR_PALETTE`
-/// (a name or file) when set, and checks each.
+/// (a name or file) when set, and checks each. With `CURSOR_OUTPUT` set, checks
+/// the theme already written there instead.
 pub fn theme<T: Theme>() {
-    let choices = match std::env::var("CURSOR_PALETTE") {
+    let load = |choice: &str| T::new(Palette::load::<T>(choice).unwrap());
+    let palette = std::env::var("CURSOR_PALETTE");
+    if let Ok(output) = std::env::var("CURSOR_OUTPUT") {
+        return checked(&load(&palette.unwrap_or_else(|_| T::PALETTES[0].0.to_owned())), Path::new(&output));
+    }
+    let choices = match palette {
         Ok(choice) => vec![choice],
         Err(_) => T::PALETTES.iter().map(|(name, _)| name.to_string()).collect(),
     };
     for choice in choices {
-        generated(&T::new(Palette::load::<T>(&choice).unwrap()));
+        generated(&load(&choice));
     }
 }
 
@@ -62,6 +68,12 @@ fn generated<T: Theme>(theme: &T) {
     let output = std::env::temp_dir().join(format!("{}-{name}-check-{}", T::ID, std::process::id()));
     let _ = fs::remove_dir_all(&output);
     generate(theme, &output, None, &SIZES).unwrap();
+    checked(theme, &output);
+    fs::remove_dir_all(&output).unwrap();
+}
+
+/// Checks a theme written to `output`.
+fn checked<T: Theme>(theme: &T, output: &Path) {
     let cursors = output.join("cursors");
     let mut largest: HashMap<u32, u32> = HashMap::new();
 
@@ -120,5 +132,4 @@ fn generated<T: Theme>(theme: &T) {
     for (shape, name) in aliases.chain(legacy) {
         assert_eq!(fs::read_link(cursors.join(name)).unwrap(), Path::new(shape.name()), "{name}");
     }
-    fs::remove_dir_all(&output).unwrap();
 }

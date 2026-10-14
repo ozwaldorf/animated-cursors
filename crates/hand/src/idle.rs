@@ -210,6 +210,14 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
         // The hand sweeps the reticle around, as if taking aim.
         Shape::Crosshair => rolled(rest, 14.0 * wobble(u, 1.5)),
         Shape::ZoomIn | Shape::ZoomOut => rolled(rest, 12.0 * wobble(u, 2.0)),
+        // The thumb drops like a hammer and the barrel kicks up from the wrist,
+        // then the thumb cocks back.
+        Shape::Kill => hand(rest, |p| {
+            let hammer = ease(window(u, (0.0, 0.12))) - ease(window(u, (0.5, 0.85)));
+            let kick = bump(u, 0.1, 0.4);
+            let thumb = [p.thumb[0] - 60.0 * hammer, p.thumb[1], p.thumb[2] + 0.2 * hammer];
+            Pose { thumb, roll: p.roll - 12.0 * kick, ..p }.pinned(WRIST, p.place(WRIST))
+        }),
         Shape::Progress | Shape::Wait => rest,
     }
 }

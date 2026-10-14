@@ -4,9 +4,9 @@
 use std::f32::consts::PI;
 
 use cursor_core::Shape;
-use cursor_core::motion::{bump, polar, spring, window, wobble};
+use cursor_core::motion::{bump, ease, polar, spring, window, wobble};
 
-use crate::cursors::{BADGE, BELLY, PALM};
+use crate::cursors::{BADGE, BELLY, JAW, PALM};
 use crate::scene::{Drop, P, Scene, Warp};
 
 /// Gesture frame length in milliseconds.
@@ -18,6 +18,7 @@ pub fn timing(shape: Shape) -> (u32, usize) {
         Shape::Default => (1600, 30),
         Shape::Text | Shape::VerticalText => (1800, 24),
         Shape::Pointer | Shape::Grab | Shape::Copy | Shape::NotAllowed => (1200, 24),
+        Shape::Kill => (1400, 28),
         _ => (1400, 20),
     }
 }
@@ -118,6 +119,14 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
         Shape::Crosshair => {
             let pull = -3.4 * bump(u, 0.0, 1.0);
             each(rest, |key, d| if key.starts_with("tick") { pushed(d, origin, pull) } else { d })
+        }
+        // The jaw drips slowly open, then snaps shut with a bounce.
+        Shape::Kill => {
+            let open = 1.6 * (ease(window(u, (0.0, 0.5))) - spring(window(u, (0.55, 0.9))));
+            each(rest, |key, d| match key == "jaw" || d.anchor == JAW {
+                true => moved(d, (0.0, open)),
+                false => d,
+            })
         }
         Shape::ZoomIn => {
             each(rest, |key, d| if key.starts_with("plus") { turned(d, origin, 90.0 * spring(u)) } else { d })

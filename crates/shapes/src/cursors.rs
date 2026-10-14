@@ -139,6 +139,7 @@ fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
         Shape::Crosshair => rest.push_blobs(-1.4 * bump(u, 0.0, 1.0)),
         Shape::ZoomIn => rest.spin(45.0 * spring(u)),
         Shape::ZoomOut => rest.spin(30.0 * spring(u)),
+        Shape::Kill => rest.spin(90.0 * spring(u)).about(origin, 0.0, 1.0 + 0.06 * bump(u, 0.0, 0.5)),
         Shape::Progress | Shape::Wait => rest,
     }
 }
@@ -203,6 +204,10 @@ fn layout(colors: &Palette, shape: Shape, phase: f32) -> Scene {
             }));
             Scene { blobs, glyphs: vec![] }
         }
+        Shape::Kill => Scene {
+            blobs: vec![blob((0.0, 0.0), star(4, 10.8, 0.32, 2.4, 1.0, 45.0), 0.0, colors["refuse"])],
+            glyphs: vec![dot("dot", (0.0, 0.0), 3.0)],
+        },
         Shape::ZoomIn => Scene { blobs: vec![blob((0.0, 0.0), sunny(10.0), 0.0, colors["zoom"])], glyphs: plus(3.6) },
         Shape::ZoomOut => Scene {
             blobs: vec![blob((0.0, 0.0), cookie(12, 9.6), 0.0, colors["zoom"])],

@@ -104,6 +104,16 @@ fn fist() -> Parts {
     hand(2.0, 10.0, 5.0, 4.5)
 }
 
+/// A center dot with four ticks around it at `angles`.
+fn reticle(angles: [f32; 4]) -> Parts {
+    let mut parts = vec![("body", dot(0.0, 0.0, 3.0))];
+    for (key, angle) in ["tick0", "tick1", "tick2", "tick3"].into_iter().zip(angles) {
+        let (x, y) = polar(0.0, 0.0, 8.0, angle);
+        parts.push((key, bar(x, y, 6.0, 2.0, Some(angle))));
+    }
+    parts
+}
+
 /// Lens of `radius` with a handle and a bar, or a plus when `plus`.
 fn magnifier(radius: f32, plus: bool) -> Parts {
     let (x, y) = polar(0.0, 0.0, radius + 3.6, 45.0);
@@ -149,15 +159,8 @@ pub fn parts(shape: Shape, phase: f32) -> Parts {
         }
         Shape::Progress => vec![("body", dot(0.0, 0.0, 6.0)), ("spin", spinner(9.0, 2.5, phase))],
         Shape::Wait => vec![("spin", spinner(8.0, 4.0, phase))],
-        Shape::Crosshair => {
-            let mut parts = vec![("body", dot(0.0, 0.0, 3.0))];
-            let keys = ["tick0", "tick1", "tick2", "tick3"];
-            for (key, angle) in keys.into_iter().zip([-90.0, 0.0, 90.0, 180.0]) {
-                let (x, y) = polar(0.0, 0.0, 8.0, angle);
-                parts.push((key, bar(x, y, 6.0, 2.0, Some(angle))));
-            }
-            parts
-        }
+        Shape::Crosshair => reticle([-90.0, 0.0, 90.0, 180.0]),
+        Shape::Kill => reticle([-135.0, -45.0, 45.0, 135.0]),
         Shape::ZoomIn => magnifier(7.5, true),
         Shape::ZoomOut => magnifier(5.8, false),
     }

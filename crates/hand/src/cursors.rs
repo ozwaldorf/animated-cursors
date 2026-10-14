@@ -118,6 +118,20 @@ fn holding(at: V, angle: f32, size: f32) -> Pose {
     Pose { roll: upright(angle), size, ..hold() }.pinned(GRIP, at)
 }
 
+/// Index and middle held together as a barrel and the thumb cocked up as a
+/// hammer, the others curled into a grip: a hand held out in front, seen
+/// from behind as the barrel points away and to the left.
+fn gun() -> Pose {
+    Pose {
+        turn: 180.0,
+        tip: 45.0,
+        spread: [-1.0, 1.0, 6.0, 10.0],
+        curl: [0.0, 0.0, 0.95, 0.97],
+        thumb: [80.0, 0.0, 0.0],
+        ..point()
+    }
+}
+
 /// The index raised and bent slightly, the others curled, back of the hand
 /// to the viewer, its knuckle on the hotspot so the finger wags about it.
 fn wagging() -> Pose {
@@ -297,6 +311,7 @@ pub fn scene(shape: Shape, phase: f32) -> Scene {
         Shape::Crosshair => rimmed(Kind::Reticle, 4.8, 45.0, 0.6),
         Shape::ZoomIn => lens(1.0, 1.0),
         Shape::ZoomOut => lens(0.8, 0.0),
+        Shape::Kill => bare(aimed(gun(), -90.0, 0.92, ORIGIN)),
     }
 }
 

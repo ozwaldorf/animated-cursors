@@ -21,10 +21,11 @@ pub enum Shape {
     Crosshair,
     ZoomIn,
     ZoomOut,
+    Kill,
 }
 
 impl Shape {
-    pub const ALL: [Shape; 19] = [
+    pub const ALL: [Shape; 20] = [
         Shape::Default,
         Shape::Pointer,
         Shape::Text,
@@ -44,6 +45,7 @@ impl Shape {
         Shape::Crosshair,
         Shape::ZoomIn,
         Shape::ZoomOut,
+        Shape::Kill,
     ];
 
     /// Wayland cursor-shape name.
@@ -68,6 +70,7 @@ impl Shape {
             Shape::Crosshair => "crosshair",
             Shape::ZoomIn => "zoom-in",
             Shape::ZoomOut => "zoom-out",
+            Shape::Kill => "kill",
         }
     }
 
@@ -96,7 +99,7 @@ impl Shape {
     }
 }
 
-pub const PAIRS: [(Shape, Shape); 24] = [
+pub const PAIRS: [(Shape, Shape); 25] = [
     (Shape::Default, Shape::Pointer),
     (Shape::Default, Shape::Text),
     (Shape::Pointer, Shape::Text),
@@ -121,10 +124,11 @@ pub const PAIRS: [(Shape, Shape); 24] = [
     (Shape::Text, Shape::NwseResize),
     (Shape::Text, Shape::ColResize),
     (Shape::ZoomIn, Shape::ZoomOut),
+    (Shape::Default, Shape::Kill),
 ];
 
 /// Legacy X11, Qt and toolkit names.
-pub const LEGACY_ALIASES: [(Shape, &[&str]); 16] = [
+pub const LEGACY_ALIASES: [(Shape, &[&str]); 17] = [
     (
         Shape::Default,
         &[
@@ -260,10 +264,8 @@ pub const LEGACY_ALIASES: [(Shape, &[&str]); 16] = [
             "a2a266d0498c3104214a47bd64ab0fc8",
         ],
     ),
-    (
-        Shape::NotAllowed,
-        &["circle", "crossed_circle", "pirate", "X_cursor", "x-cursor", "03b6e0fcb3499374a867c041f52298f0"],
-    ),
+    (Shape::NotAllowed, &["circle", "crossed_circle", "03b6e0fcb3499374a867c041f52298f0"]),
+    (Shape::Kill, &["pirate", "X_cursor", "x-cursor"]),
     (Shape::NoDrop, &["dnd-no-drop", "forbidden"]),
     (
         Shape::Crosshair,

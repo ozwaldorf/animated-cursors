@@ -2,7 +2,7 @@
 //! it started. Spins turn by a symmetry of the part, so loops close cleanly.
 
 use cursor_core::Shape;
-use cursor_core::motion::{bump, polar, spring, wobble};
+use cursor_core::motion::{bump, polar, spring, window, wobble};
 
 use crate::rig::{Kind, Part, Parts, parts};
 
@@ -101,6 +101,11 @@ pub fn gesture(shape: Shape, u: f32) -> Parts {
         Shape::Crosshair => {
             let pull = -1.4 * bump(u, 0.0, 1.0);
             each(rest, |key, p| if key.starts_with("tick") { pushed(p, origin, pull) } else { p })
+        }
+        // The ticks snap in on the center, then turn a quarter as they settle.
+        Shape::Kill => {
+            let (pull, turn) = (-1.8 * bump(u, 0.0, 0.5), 90.0 * spring(window(u, (0.2, 1.0))));
+            each(rest, |key, p| if key.starts_with("tick") { turned(pushed(p, origin, pull), origin, turn) } else { p })
         }
         Shape::ZoomIn => {
             each(rest, |key, p| if key.starts_with("plus") { turned(p, origin, 90.0 * spring(u)) } else { p })

@@ -88,6 +88,26 @@ fn ring(radius: f32, hole: f32, color: Color) -> Drops {
     vec![("body", blob((0.0, 0.0), radius, color)), ("hole", blob((0.0, 0.0), hole, color).carve())]
 }
 
+/// Center of the skull's jaw.
+pub const JAW: P = (0.0, 5.4);
+
+/// A skull with carved eyes, nose and teeth, its jaw a separate drop fused on
+/// below.
+fn skull(color: Color) -> Drops {
+    let head = (0.0, -1.4);
+    let mut drops = vec![
+        ("body", blob(head, 7.2, color)),
+        ("jaw", capsule((JAW.0 - 2.6, JAW.1), (JAW.0 + 2.6, JAW.1), 2.4, color).anchored(head)),
+        ("eye_l", blob((-2.8, -1.0), 2.1, color).carve().own()),
+        ("eye_r", blob((2.8, -1.0), 2.1, color).carve().own()),
+        ("nose", cone((0.0, 1.7), 0.5, (0.0, 2.9), 0.9, color).carve().own()),
+    ];
+    for (key, x) in [("tooth_l", -1.3), ("tooth_r", 1.3)] {
+        drops.push((key, capsule((x, JAW.1 - 1.2), (x, JAW.1 + 1.2), 0.4, color).carve().anchored(JAW)));
+    }
+    drops
+}
+
 /// Solid lens of `radius` with a handle and a carved bar, or a carved plus
 /// when `plus`.
 fn magnifier(colors: &Palette, radius: f32, plus: bool) -> Drops {
@@ -180,6 +200,7 @@ pub fn layout(colors: &Palette, shape: Shape, phase: f32) -> Drops {
         }
         Shape::ZoomIn => magnifier(colors, 8.2, true),
         Shape::ZoomOut => magnifier(colors, 6.6, false),
+        Shape::Kill => skull(colors["refuse"]),
     }
 }
 

@@ -94,14 +94,14 @@ fn arrow() -> Pose {
 }
 
 /// Fingers and thumb closed around a bar along the hand's x axis, the palm
-/// tipped up so the fingers show curling over it. The loop they close
+/// tipped back so the cuff comes out toward the viewer. The loop they close
 /// leaves `GRIP` 1.4 units clear.
 fn hold() -> Pose {
     Pose {
         turn: HOLD_TURN,
         tip: HOLD_TIP,
         spread: [-2.0, 0.0, 2.0, 4.0],
-        curl: [0.35, 0.37, 0.4, 0.45],
+        curl: [0.45, 0.47, 0.5, 0.55],
         thumb: [20.0, 70.0, 0.9],
         ..point()
     }

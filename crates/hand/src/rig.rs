@@ -250,7 +250,7 @@ impl Kind {
 /// Turn and tip of the glove when it holds a prop, which sets how held props
 /// sit in its frame.
 pub const HOLD_TURN: f32 = 180.0;
-pub const HOLD_TIP: f32 = -50.0;
+pub const HOLD_TIP: f32 = 50.0;
 
 /// Where a held prop sits in the hand: the point in the prop's own frame
 /// that lies on `GRIP`, and the prop's roll beyond the hand's.

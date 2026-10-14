@@ -67,7 +67,7 @@ fn generated<T: Theme>(theme: &T) {
     let name = &theme.palette().name;
     let output = std::env::temp_dir().join(format!("{}-{name}-check-{}", T::ID, std::process::id()));
     let _ = fs::remove_dir_all(&output);
-    generate(theme, &output, None, &SIZES).unwrap();
+    generate(theme, &output, &SIZES).unwrap();
     checked(theme, &output);
     fs::remove_dir_all(&output).unwrap();
 }

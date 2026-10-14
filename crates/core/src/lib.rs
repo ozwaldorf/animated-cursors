@@ -7,6 +7,7 @@ pub mod color;
 pub mod motion;
 pub mod paint;
 pub mod palette;
+pub mod preview;
 pub mod shape;
 pub mod theme;
 pub mod xcursor;

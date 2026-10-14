@@ -1,19 +1,19 @@
 //! The theme interface and the writer for a complete Xcursor theme:
-//! ordinary cursors, reversible transitions, aliases and preview GIFs.
+//! ordinary cursors, reversible transitions and aliases.
 //!
 //! Every image is exactly its nominal size. One scale per theme is fitted so
 //! the largest frame, shadow and animations included, fills the image, and
 //! each cursor's hotspot is placed to center its frames.
 
 use std::collections::HashMap;
-use std::fs::{self, File};
+use std::fs;
 use std::io;
 use std::os::unix::fs::symlink;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
-use tiny_skia::{Pixmap, PixmapPaint, Transform};
+use tiny_skia::{Pixmap, Transform};
 
 use crate::paint::argb;
 use crate::palette::Palette;
@@ -194,7 +194,12 @@ pub fn render<T: Theme>(theme: &T, scene: &T::Scene, scale: f32, size: u32, hots
     pixmap
 }
 
-fn pixmaps<T: Theme>(theme: &T, sequence: &Sequence<T::Scene>, fit: Fit, size: u32) -> Vec<(Pixmap, (u32, u32))> {
+pub(crate) fn pixmaps<T: Theme>(
+    theme: &T,
+    sequence: &Sequence<T::Scene>,
+    fit: Fit,
+    size: u32,
+) -> Vec<(Pixmap, (u32, u32))> {
     let scale = fit.scale(size);
     sequence
         .frames
@@ -229,168 +234,8 @@ pub fn transition_names(from: Shape, to: Shape) -> Vec<String> {
     names(from).flat_map(|a| names(to).map(move |b| format!("{a}-to-{b}"))).collect()
 }
 
-/// Frames at 64 px placed by their hotspots on a canvas twice as wide.
-/// Loops play in real time; transitions play slowed down, both ways, with
-/// pauses at the endpoints.
-fn preview<T: Theme>(
-    theme: &T,
-    sequence: &Sequence<T::Scene>,
-    fit: Fit,
-    transition: bool,
-    path: &Path,
-) -> io::Result<()> {
-    const SIZE: u32 = 64;
-    let pixmaps: Vec<Pixmap> = pixmaps(theme, sequence, fit, SIZE)
-        .into_iter()
-        .map(|(image, (xhot, yhot))| {
-            let mut canvas = Pixmap::new(SIZE * 2, SIZE * 2).expect("nonzero size");
-            let (x, y) = ((SIZE - xhot) as i32, (SIZE - yhot) as i32);
-            canvas.draw_pixmap(x, y, image.as_ref(), &PixmapPaint::default(), Transform::identity(), None);
-            canvas
-        })
-        .collect();
-    let last = pixmaps.len() - 1;
-    let sequence: Vec<(usize, u16)> = if transition {
-        let hold = |index: usize, end: usize| if index == end { 40 } else { 2 };
-        (0..=last).map(|i| (i, hold(i, last))).chain((0..=last).rev().map(|i| (i, hold(i, 0)))).collect()
-    } else {
-        sequence.order.iter().map(|&i| (i, (sequence.frames[i].delay / 10).max(2) as u16)).collect()
-    };
-    let (frames, delays): (Vec<&Pixmap>, Vec<u16>) =
-        sequence.into_iter().map(|(i, delay)| (&pixmaps[i], delay)).unzip();
-    gif(path, &frames, &delays, 1)
-}
-
-/// Cursors on a palette sheet, in two rows.
-const SHEET: [Shape; 10] = [
-    Shape::Default,
-    Shape::Pointer,
-    Shape::Text,
-    Shape::EwResize,
-    Shape::Grab,
-    Shape::Copy,
-    Shape::NotAllowed,
-    Shape::Wait,
-    Shape::ZoomIn,
-    Shape::Crosshair,
-];
-
-/// A few cursors at 64 px, for comparing palettes. Each loops as many whole
-/// times as fit in the longest loop, then holds its last frame so all restart
-/// together. Busy loops never rest, so they stretch to fill it instead.
-pub fn sheet<T: Theme>(theme: &T, path: &Path) -> io::Result<()> {
-    const SIZE: u32 = 64;
-    let columns = SHEET.len() as u32 / 2;
-    let sequences = parallel(&SHEET, |shape| cursor_sequence(theme, *shape));
-    let fit = Fit { extent: sequences.iter().flat_map(|s| &s.bounds).map(Bounds::extent).fold(0.0, f32::max) };
-    let cells = parallel(&sequences, |sequence| {
-        let images: Vec<Pixmap> = pixmaps(theme, sequence, fit, SIZE).into_iter().map(|(image, _)| image).collect();
-        let delays: Vec<u32> = sequence.frames.iter().map(|frame| (frame.delay / 10).max(2)).collect();
-        (images, delays)
-    });
-    let period = |delays: &[u32]| if delays.len() > 1 { delays.iter().sum() } else { 0 };
-    let longest = cells.iter().map(|(_, delays)| period(delays)).max().unwrap_or(0);
-    // Frame shown by each cell from each time on, until all loops are done.
-    let schedules: Vec<Vec<(u32, usize)>> = cells
-        .iter()
-        .zip(SHEET)
-        .map(|((_, delays), shape)| {
-            let span = period(delays);
-            let fits = longest.checked_div(span).unwrap_or(1);
-            let loops = if shape.is_busy() { (longest as f32 / span as f32).round() as u32 } else { fits };
-            let stretch = if shape.is_busy() { longest as f32 / (loops * span) as f32 } else { 1.0 };
-            let starts = delays.iter().scan(0, |time, delay| Some(std::mem::replace(time, *time + delay)));
-            let once: Vec<(u32, usize)> = starts.zip(0..).collect();
-            let played = (0..loops).flat_map(|n| once.iter().map(move |&(time, index)| (n * span + time, index)));
-            let at = |(time, index): (u32, usize)| ((time as f32 * stretch).round() as u32, index);
-            played.map(at).chain((span > 0).then(|| (loops * span, delays.len() - 1)).map(at)).collect()
-        })
-        .collect();
-    // Browsers slow down delays under 2 cs, so changes closer than that wait.
-    let mut times: Vec<u32> = schedules.iter().flatten().map(|&(time, _)| time).collect();
-    times.sort_unstable();
-    let times = times.into_iter().fold(vec![0], |mut kept, time| {
-        if time >= kept[kept.len() - 1] + 2 && time + 2 <= longest {
-            kept.push(time);
-        }
-        kept
-    });
-    let canvases: Vec<Pixmap> = times
-        .iter()
-        .map(|&time| {
-            let mut canvas = Pixmap::new(SIZE * columns, SIZE * 2).expect("nonzero size");
-            for (cell, ((images, _), schedule)) in cells.iter().zip(&schedules).enumerate() {
-                let index = schedule.iter().take_while(|(start, _)| *start <= time).last().map_or(0, |&(_, i)| i);
-                let (x, y) = (cell as u32 % columns * SIZE, cell as u32 / columns * SIZE);
-                let image = images[index].as_ref();
-                canvas.draw_pixmap(x as i32, y as i32, image, &PixmapPaint::default(), Transform::identity(), None);
-            }
-            canvas
-        })
-        .collect();
-    let delays: Vec<u16> =
-        times.iter().zip(times.iter().skip(1).chain([&longest])).map(|(a, b)| b.saturating_sub(*a) as u16).collect();
-    gif(path, &canvases.iter().collect::<Vec<_>>(), &delays, 1)
-}
-
-/// Pixel box as (left, top, right, bottom), inclusive.
-type Area = (usize, usize, usize, usize);
-
-/// Writes pixmaps as a looping GIF over a neutral grey, scaled up by `scale`
-/// with nearest-neighbour sampling; `delays` are in hundredths of a second.
-/// Each frame after the first stores only the box that changed, and frames
-/// that change nothing extend the previous one.
-pub fn gif(path: &Path, pixmaps: &[&Pixmap], delays: &[u16], scale: usize) -> io::Result<()> {
-    const BACKGROUND: [u8; 3] = [0x55, 0x55, 0x55];
-    let (width, height) = (pixmaps[0].width() as usize * scale, pixmaps[0].height() as usize * scale);
-    let flatten = |pixmap: &Pixmap| -> Vec<u8> {
-        (0..width * height)
-            .flat_map(|i| {
-                let pixel = pixmap.pixel((i % width / scale) as u32, (i / width / scale) as u32).unwrap();
-                let alpha = 255 - pixel.alpha() as u16;
-                let channels = [pixel.red(), pixel.green(), pixel.blue()];
-                (0..3).map(move |c| (channels[c] as u16 + BACKGROUND[c] as u16 * alpha / 255) as u8)
-            })
-            .collect()
-    };
-    let changed = |a: &[u8], b: &[u8]| -> Option<Area> {
-        (0..width * height).filter(|&i| a[3 * i..3 * i + 3] != b[3 * i..3 * i + 3]).fold(None, |area, i| {
-            let (x, y) = (i % width, i / width);
-            let (l, t, r, b) = area.unwrap_or((x, y, x, y));
-            Some((l.min(x), t.min(y), r.max(x), b.max(y)))
-        })
-    };
-    let mut frames: Vec<(Vec<u8>, Area, u16)> = Vec::new();
-    let mut previous: Option<Vec<u8>> = None;
-    for (pixmap, &delay) in pixmaps.iter().zip(delays) {
-        let rgb = flatten(pixmap);
-        let area = match &previous {
-            None => Some((0, 0, width - 1, height - 1)),
-            Some(last) => changed(last, &rgb),
-        };
-        match (area, frames.last_mut()) {
-            (None, Some(last)) => last.2 += delay,
-            (area, _) => {
-                let (l, t, r, b) = area.unwrap_or((0, 0, 0, 0));
-                let crop = (t..=b).flat_map(|y| rgb[3 * (y * width + l)..3 * (y * width + r + 1)].to_vec()).collect();
-                frames.push((crop, (l, t, r, b), delay));
-                previous = Some(rgb);
-            }
-        }
-    }
-    let mut encoder =
-        gif::Encoder::new(File::create(path)?, width as u16, height as u16, &[]).map_err(io::Error::other)?;
-    encoder.set_repeat(gif::Repeat::Infinite).map_err(io::Error::other)?;
-    for (rgb, (l, t, r, b), delay) in frames {
-        let mut frame = gif::Frame::from_rgb_speed((r - l + 1) as u16, (b - t + 1) as u16, &rgb, 10);
-        (frame.left, frame.top, frame.delay) = (l as u16, t as u16, delay);
-        encoder.write_frame(&frame).map_err(io::Error::other)?;
-    }
-    Ok(())
-}
-
 /// Maps jobs across threads, keeping their order.
-fn parallel<J: Sync, R: Send>(jobs: &[J], work: impl Fn(&J) -> R + Sync) -> Vec<R> {
+pub(crate) fn parallel<J: Sync, R: Send>(jobs: &[J], work: impl Fn(&J) -> R + Sync) -> Vec<R> {
     let next = AtomicUsize::new(0);
     let workers = thread::available_parallelism().map_or(4, |n| n.get());
     let mut results: Vec<(usize, R)> = thread::scope(|scope| {
@@ -412,38 +257,42 @@ fn parallel<J: Sync, R: Send>(jobs: &[J], work: impl Fn(&J) -> R + Sync) -> Vec<
     results.into_iter().map(|(_, result)| result).collect()
 }
 
-pub fn generate<T: Theme>(theme: &T, output: &Path, previews: Option<&Path>, sizes: &[u32]) -> io::Result<()> {
-    let cursors = output.join("cursors");
-    fs::create_dir_all(&cursors)?;
-    if let Some(directory) = previews {
-        fs::create_dir_all(directory)?;
-    }
-    fs::write(output.join("index.theme"), format!("[Icon Theme]\nName={} ({})\n", T::TITLE, theme.palette().name))?;
+pub type Cursors<S> = HashMap<Shape, Sequence<S>>;
 
-    let shapes: HashMap<Shape, Sequence<T::Scene>> =
+/// Every cursor and every transition in `PAIRS` order, with the one scale
+/// that fits them all.
+pub struct Fitted<S> {
+    pub shapes: Cursors<S>,
+    pub transitions: Vec<Sequence<S>>,
+    pub fit: Fit,
+}
+
+pub fn fitted<T: Theme>(theme: &T) -> Fitted<T::Scene> {
+    let shapes: Cursors<T::Scene> =
         Shape::ALL.into_iter().zip(parallel(&Shape::ALL, |shape| cursor_sequence(theme, *shape))).collect();
     let transitions = parallel(&PAIRS, |pair| transition_sequence(theme, *pair, &shapes));
     let extent = shapes.values().chain(&transitions).flat_map(|s| &s.bounds).map(Bounds::extent).fold(0.0, f32::max);
-    let fit = Fit { extent };
+    Fitted { shapes, transitions, fit: Fit { extent } }
+}
 
-    let jobs: Vec<(String, &Sequence<T::Scene>, bool)> = Shape::ALL
+pub fn generate<T: Theme>(theme: &T, output: &Path, sizes: &[u32]) -> io::Result<()> {
+    let cursors = output.join("cursors");
+    fs::create_dir_all(&cursors)?;
+    fs::write(output.join("index.theme"), format!("[Icon Theme]\nName={} ({})\n", T::TITLE, theme.palette().name))?;
+
+    let Fitted { shapes, transitions, fit } = fitted(theme);
+    let jobs: Vec<(String, &Sequence<T::Scene>)> = Shape::ALL
         .into_iter()
-        .map(|shape| (shape.name().to_owned(), &shapes[&shape], false))
-        .chain(
-            PAIRS.into_iter().zip(&transitions).map(|((a, b), s)| (format!("{}-to-{}", a.name(), b.name()), s, true)),
-        )
+        .map(|shape| (shape.name().to_owned(), &shapes[&shape]))
+        .chain(PAIRS.into_iter().zip(&transitions).map(|((a, b), s)| (format!("{}-to-{}", a.name(), b.name()), s)))
         .collect();
-    parallel(&jobs, |(name, sequence, transition)| {
+    parallel(&jobs, |(name, sequence)| {
         let images: Vec<Image> = sizes.iter().flat_map(|&size| images(theme, sequence, fit, size)).collect();
         // Each size plays the frames in order, repeats pointing at one image.
         let count = sequence.frames.len();
         let entries: Vec<usize> =
             (0..sizes.len()).flat_map(|block| sequence.order.iter().map(move |&i| block * count + i)).collect();
-        fs::write(cursors.join(name), encode(&images, &entries))?;
-        match previews {
-            Some(directory) => preview(theme, sequence, fit, *transition, &directory.join(format!("{name}.gif"))),
-            _ => Ok(()),
-        }
+        fs::write(cursors.join(name), encode(&images, &entries))
     })
     .into_iter()
     .collect::<io::Result<()>>()?;

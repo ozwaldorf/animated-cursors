@@ -48,6 +48,7 @@ Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
 | `resize` | resize cursors |
 | `crosshair` | crosshair |
 | `zoom` | zoom lens |
+| `help` | help question mark |
 | `busy` | busy cursors |
 | `copy` | copy badge |
 | `refuse` | no-drop and not-allowed |
@@ -113,6 +114,7 @@ Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
 | --- | --- |
 | `arrow` | default and progress arrow |
 | `link` | pointer |
+| `help` | help |
 | `text` | text and vertical-text |
 | `resize` | resize cursors |
 | `grab` | grab |
@@ -153,8 +155,9 @@ Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
 
 | Role | Colors |
 | --- | --- |
-| `arrow` | default and progress arrow |
+| `arrow` | default, progress and help arrow |
 | `link` | pointer |
+| `help` | help bud |
 | `text` | text and vertical-text |
 | `resize` | resize cursors |
 | `grab` | grab and grabbing |

@@ -23,6 +23,7 @@ impl Theme for Shapes {
     const ROLES: &'static [&'static str] = &[
         "arrow",
         "link",
+        "help",
         "text",
         "resize",
         "grab",

@@ -19,6 +19,7 @@ pub fn timing(shape: Shape) -> (u32, usize) {
         Shape::Text | Shape::VerticalText => (1800, 28),
         Shape::Pointer | Shape::Grab | Shape::Copy => (1200, 28),
         Shape::NotAllowed => (0, 54),
+        Shape::Help => (1400, 36),
         _ => (1400, 24),
     }
 }
@@ -210,6 +211,8 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
         // The hand sweeps the reticle around, as if taking aim.
         Shape::Crosshair => rolled(rest, 14.0 * wobble(u, 1.5)),
         Shape::ZoomIn | Shape::ZoomOut => rolled(rest, 12.0 * wobble(u, 2.0)),
+        // The question mark turns about once like a coin.
+        Shape::Help => props(rest, |p| Prop { spin: p.spin + 360.0 * ease(u), ..p }),
         // The thumb drops like a hammer and the barrel kicks up from the wrist,
         // then the thumb cocks back.
         Shape::Kill => hand(rest, |p| {

@@ -46,6 +46,13 @@ fn resize(colors: &Palette, angle: f32) -> Scene {
     Scene { blobs: vec![blob((0.0, 0.0), pill(22.0, 10.0, 0.0), angle, colors["resize"])], glyphs: glyphs.into() }
 }
 
+/// A question mark: a hook curling into a stem, and a dot below.
+fn query() -> Vec<Glyph> {
+    let mut hook: Vec<P> = (0..=10).map(|i| polar(0.0, -2.2, 2.5, 200.0 + 25.0 * i as f32)).collect();
+    hook.push((0.0, 1.4));
+    vec![stroke("hook", hook, 2.2), dot("dot", (0.0, 4.3), 2.7)]
+}
+
 fn plus(arm: f32) -> Vec<Glyph> {
     vec![stroke("bar", vec![(-arm, 0.0), (arm, 0.0)], 2.2), stroke("stem", vec![(0.0, -arm), (0.0, arm)], 2.2)]
 }
@@ -139,6 +146,7 @@ fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
         Shape::Crosshair => rest.push_blobs(-1.4 * bump(u, 0.0, 1.0)),
         Shape::ZoomIn => rest.spin(45.0 * spring(u)),
         Shape::ZoomOut => rest.spin(30.0 * spring(u)),
+        Shape::Help => rest.spin(40.0 * spring(u)),
         Shape::Kill => rest.spin(90.0 * spring(u)).about(origin, 0.0, 1.0 + 0.06 * bump(u, 0.0, 0.5)),
         Shape::Progress | Shape::Wait => rest,
     }
@@ -204,6 +212,7 @@ fn layout(colors: &Palette, shape: Shape, phase: f32) -> Scene {
             }));
             Scene { blobs, glyphs: vec![] }
         }
+        Shape::Help => Scene { blobs: vec![blob((0.0, 0.0), cookie(9, 10.2), 0.0, colors["help"])], glyphs: query() },
         Shape::Kill => Scene {
             blobs: vec![blob((0.0, 0.0), star(4, 10.8, 0.32, 2.4, 1.0, 45.0), 0.0, colors["refuse"])],
             glyphs: vec![dot("dot", (0.0, 0.0), 3.0)],

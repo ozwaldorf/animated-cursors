@@ -4,6 +4,7 @@
 pub enum Shape {
     Default,
     Pointer,
+    Help,
     Text,
     VerticalText,
     EwResize,
@@ -25,9 +26,10 @@ pub enum Shape {
 }
 
 impl Shape {
-    pub const ALL: [Shape; 20] = [
+    pub const ALL: [Shape; 21] = [
         Shape::Default,
         Shape::Pointer,
+        Shape::Help,
         Shape::Text,
         Shape::VerticalText,
         Shape::EwResize,
@@ -53,6 +55,7 @@ impl Shape {
         match self {
             Shape::Default => "default",
             Shape::Pointer => "pointer",
+            Shape::Help => "help",
             Shape::Text => "text",
             Shape::VerticalText => "vertical-text",
             Shape::EwResize => "ew-resize",
@@ -77,7 +80,7 @@ impl Shape {
     /// Other Wayland cursor-shape names drawn with this shape.
     pub fn aliases(self) -> &'static [&'static str] {
         match self {
-            Shape::Default => &["context-menu", "help"],
+            Shape::Default => &["context-menu"],
             Shape::EwResize => &["e-resize", "w-resize"],
             Shape::NsResize => &["n-resize", "s-resize", "row-resize"],
             Shape::NeswResize => &["ne-resize", "sw-resize"],
@@ -99,7 +102,7 @@ impl Shape {
     }
 }
 
-pub const PAIRS: [(Shape, Shape); 25] = [
+pub const PAIRS: [(Shape, Shape); 27] = [
     (Shape::Default, Shape::Pointer),
     (Shape::Default, Shape::Text),
     (Shape::Pointer, Shape::Text),
@@ -125,10 +128,12 @@ pub const PAIRS: [(Shape, Shape); 25] = [
     (Shape::Text, Shape::ColResize),
     (Shape::ZoomIn, Shape::ZoomOut),
     (Shape::Default, Shape::Kill),
+    (Shape::Default, Shape::Help),
+    (Shape::Pointer, Shape::Help),
 ];
 
 /// Legacy X11, Qt and toolkit names.
-pub const LEGACY_ALIASES: [(Shape, &[&str]); 17] = [
+pub const LEGACY_ALIASES: [(Shape, &[&str]); 18] = [
     (
         Shape::Default,
         &[
@@ -137,9 +142,6 @@ pub const LEGACY_ALIASES: [(Shape, &[&str]); 17] = [
             "top_left_arrow",
             "right_ptr",
             "center_ptr",
-            "left_ptr_help",
-            "question_arrow",
-            "whats_this",
             "dnd-ask",
             "up-arrow",
             "down-arrow",
@@ -154,6 +156,14 @@ pub const LEGACY_ALIASES: [(Shape, &[&str]); 17] = [
             "top_tee",
             "bottom_tee",
             "wayland-cursor",
+        ],
+    ),
+    (
+        Shape::Help,
+        &[
+            "left_ptr_help",
+            "question_arrow",
+            "whats_this",
             "5c6cd98b3f3ebcb1f9c7f1c204630408",
             "d9ce0ab605698f320427677b458ad60b",
         ],

@@ -24,7 +24,7 @@ impl Theme for Hand {
     const ID: &'static str = "animated_hand_cursors";
     const TITLE: &'static str = "Animated Hand";
     const ROLES: &'static [&'static str] =
-        &["glove", "shade", "ink", "text", "resize", "crosshair", "zoom", "busy", "copy", "refuse", "shadow"];
+        &["glove", "shade", "ink", "text", "resize", "crosshair", "zoom", "help", "busy", "copy", "refuse", "shadow"];
     const PALETTES: &'static [(&'static str, &'static str)] = &[
         ("carburetor", include_str!("../colors/carburetor.conf")),
         ("catppuccin", include_str!("../colors/catppuccin.conf")),

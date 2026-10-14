@@ -232,6 +232,8 @@ pub enum Kind {
     Reticle,
     /// Ball circled by two rings.
     Gyro,
+    /// Question mark.
+    Query,
 }
 
 impl Kind {
@@ -564,6 +566,19 @@ fn piece(colors: &Palette, prop: &Prop, (at, rot): (V, Rot), body: u8, solids: &
                 b.capsule(V(c * 4.8, s * 4.8, 0.0), V(c * 7.4, s * 7.4, 0.0), 0.62, t, base);
             }
             b.ball(V::default(), 0.85, t, base);
+        }
+        Kind::Query => {
+            let t = tones(colors, colors["help"]);
+            let hook = |degrees: f32| {
+                let (s, c) = degrees.to_radians().sin_cos();
+                V(2.2 * c, -2.6 + 2.2 * s, 0.0)
+            };
+            let mut points: Vec<V> = (0..=10).map(|i| hook(200.0 + 25.0 * i as f32)).collect();
+            points.push(V(0.0, 0.8, 0.0));
+            for pair in points.windows(2) {
+                b.capsule(pair[0], pair[1], 0.8, t, base);
+            }
+            b.ball(V(0.0, 3.2, 0.0), 0.95, t, base + 1);
         }
         Kind::Gyro => {
             let t = tones(colors, colors["busy"]);

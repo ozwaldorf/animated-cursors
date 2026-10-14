@@ -102,6 +102,11 @@ pub fn gesture(shape: Shape, u: f32) -> Parts {
             let pull = -1.4 * bump(u, 0.0, 1.0);
             each(rest, |key, p| if key.starts_with("tick") { pushed(p, origin, pull) } else { p })
         }
+        // The hook and stem tilt side to side over the dot.
+        Shape::Help => {
+            let tilt = 14.0 * wobble(u, 1.5);
+            each(rest, |key, p| if key == "body" { p } else { turned(p, origin, tilt) })
+        }
         // The ticks snap in on the center, then turn a quarter as they settle.
         Shape::Kill => {
             let (pull, turn) = (-1.8 * bump(u, 0.0, 0.5), 90.0 * spring(window(u, (0.2, 1.0))));

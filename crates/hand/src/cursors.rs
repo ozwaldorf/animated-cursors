@@ -286,6 +286,14 @@ fn progress(phase: f32) -> Scene {
     Scene { hand, props: vec![("busy", gyro)] }
 }
 
+/// A question mark floating over the relaxed hand turned palm up beneath it,
+/// as in progress.
+fn help() -> Scene {
+    let palm_up = Pose { turn: 250.0, roll: -80.0, ..relaxed() };
+    let hand = palm_up.pinned(V(0.0, -2.0, -6.8), ORIGIN);
+    Scene { hand, props: vec![("help", prop(Kind::Query, V(0.0, -2.0, 0.0), 0.0).sized(0.8))] }
+}
+
 /// The scene of a cursor; `phase` in [0, 1) drives busy loops.
 pub fn scene(shape: Shape, phase: f32) -> Scene {
     let bare = |hand: Pose| Scene { hand, props: Props::new() };
@@ -312,6 +320,7 @@ pub fn scene(shape: Shape, phase: f32) -> Scene {
         Shape::ZoomIn => lens(1.0, 1.0),
         Shape::ZoomOut => lens(0.8, 0.0),
         Shape::Kill => bare(aimed(gun(), -90.0, 0.92, ORIGIN)),
+        Shape::Help => help(),
     }
 }
 

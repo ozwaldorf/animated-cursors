@@ -147,6 +147,24 @@ fn progress(colors: &Palette, phase: f32) -> Drops {
     drops
 }
 
+/// Center of the help bud.
+pub const BUD: P = (14.2, 15.2);
+
+/// The teardrop with a bud at its belly, a question mark carved into it.
+fn help(colors: &Palette) -> Drops {
+    let (arrow, color) = (colors["arrow"], colors["help"]);
+    let mut drops = vec![("body", teardrop(arrow)), ("bud", blob(BUD, 3.8, color).anchored(BELLY))];
+    let at = |(x, y): P| (BUD.0 + x, BUD.1 + y);
+    let mut hook: Vec<P> = (0..=5).map(|i| at(polar(0.0, -0.9, 1.2, 200.0 + 50.0 * i as f32))).collect();
+    hook.push(at((0.0, 0.5)));
+    let keys = ["query0", "query1", "query2", "query3", "query4", "query5"];
+    for (key, ends) in keys.into_iter().zip(hook.windows(2)) {
+        drops.push((key, capsule(ends[0], ends[1], 0.42, color).carve().anchored(BUD)));
+    }
+    drops.push(("query_dot", blob(at((0.0, 1.9)), 0.5, color).carve().anchored(BUD)));
+    drops
+}
+
 fn wait(colors: &Palette, phase: f32) -> Drops {
     mitosis(colors, phase, (0.0, 0.0), 1.0, ["body", "split"])
 }
@@ -201,6 +219,7 @@ pub fn layout(colors: &Palette, shape: Shape, phase: f32) -> Drops {
         Shape::ZoomIn => magnifier(colors, 8.2, true),
         Shape::ZoomOut => magnifier(colors, 6.6, false),
         Shape::Kill => skull(colors["refuse"]),
+        Shape::Help => help(colors),
     }
 }
 

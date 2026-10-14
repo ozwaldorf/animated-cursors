@@ -24,6 +24,7 @@ impl Theme for Fluid {
     const ROLES: &'static [&'static str] = &[
         "arrow",
         "link",
+        "help",
         "text",
         "resize",
         "grab",

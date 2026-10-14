@@ -6,7 +6,7 @@ use std::f32::consts::PI;
 use cursor_core::Shape;
 use cursor_core::motion::{bump, ease, polar, spring, window, wobble};
 
-use crate::cursors::{BADGE, BELLY, JAW, PALM};
+use crate::cursors::{BADGE, BELLY, BUD, JAW, PALM};
 use crate::scene::{Drop, P, Scene, Warp};
 
 /// Gesture frame length in milliseconds.
@@ -119,6 +119,11 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32) -> Scene {
         Shape::Crosshair => {
             let pull = -3.4 * bump(u, 0.0, 1.0);
             each(rest, |key, d| if key.starts_with("tick") { pushed(d, origin, pull) } else { d })
+        }
+        // The bud hops twice on the belly.
+        Shape::Help => {
+            let hop = -0.9 * twice(u);
+            each(rest, |key, d| if key == "bud" || d.anchor == BUD { moved(d, (0.0, hop)) } else { d })
         }
         // The jaw drips slowly open, then snaps shut with a bounce.
         Shape::Kill => {

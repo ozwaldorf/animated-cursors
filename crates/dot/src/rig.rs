@@ -161,6 +161,15 @@ pub fn parts(shape: Shape, phase: f32) -> Parts {
         Shape::Wait => vec![("spin", spinner(8.0, 4.0, phase))],
         Shape::Crosshair => reticle([-90.0, 0.0, 90.0, 180.0]),
         Shape::Kill => reticle([-135.0, -45.0, 45.0, 135.0]),
+        // A hook over a stem, the dot below on the hotspot.
+        Shape::Help => {
+            let kind = Kind::Arc { radius: 4.0, start: 180.0, sweep: 270.0, enter: Enter::Expand };
+            vec![
+                ("hook", Part { x: 0.0, y: -10.5, width: 2.5, kind, from: Anchor::Point(0.0, -6.5) }),
+                ("stem", own(bar(0.0, -5.4, 3.0, 2.5, Some(90.0)))),
+                ("body", dot(0.0, 0.0, 3.2)),
+            ]
+        }
         Shape::ZoomIn => magnifier(7.5, true),
         Shape::ZoomOut => magnifier(5.8, false),
     }

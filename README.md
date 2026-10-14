@@ -1,8 +1,8 @@
 # Animated Cursors
 
-| [Shapes](#shapes-animated_shapes_cursors) | [Dot](#dot-animated_dot_cursors) | [Fluid](#fluid-animated_fluid_cursors) | [Hand](#hand-animated_hand_cursors) |
+| [Hand](#hand-animated_hand_cursors) | [Dot](#dot-animated_dot_cursors) | [Shapes](#shapes-animated_shapes_cursors) | [Fluid](#fluid-animated_fluid_cursors) |
 | :---: | :---: | :---: | :---: |
-| <img src="previews/shapes/tour.gif" alt="shapes tour" width="192"> | <img src="previews/dot/tour.gif" alt="dot tour" width="192"> | <img src="previews/fluid/tour.gif" alt="fluid tour" width="192"> | <img src="previews/hand/tour.gif" alt="hand tour" width="192"> |
+| <img src="previews/hand/tour.gif" alt="hand tour" width="192"> | <img src="previews/dot/tour.gif" alt="dot tour" width="192"> | <img src="previews/shapes/tour.gif" alt="shapes tour" width="192"> | <img src="previews/fluid/tour.gif" alt="fluid tour" width="192"> |
 
 Xcursor themes drawn from code, morphing between cursors in compositors that
 support it and plain animated cursors everywhere else.
@@ -20,6 +20,76 @@ Every theme comes in the bundled palettes `carburetor` (default), `catppuccin`
 and `gruvbox`. Pick one with `--palette`, or pass a path to your own
 `role = #rrggbb` file (see `crates/<theme>/colors`). With the flake, override
 `palette` and any role in `colors`.
+
+### Hand (`animated_hand_cursors`)
+
+Cel-shaded 3D gloves after Master Hand.
+
+#### Idle
+
+<img src="previews/hand/idle.gif" alt="hand idle loops" width="480">
+
+#### Transitions
+
+<img src="previews/hand/transitions.gif" alt="hand transitions" width="480">
+
+#### Palettes
+
+Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
+
+<img src="previews/hand/palettes.gif" alt="hand palettes" width="432">
+
+| Role | Colors |
+| --- | --- |
+| `glove` | glove |
+| `shade` | glove shading |
+| `ink` | outlines |
+| `text` | text cursors |
+| `resize` | resize cursors |
+| `crosshair` | crosshair |
+| `zoom` | zoom lens |
+| `busy` | busy cursors |
+| `copy` | copy badge |
+| `refuse` | no-drop and not-allowed |
+| `shadow` | drop shadow |
+
+```nix
+animated-cursors.packages.${system}.hand.override {
+  palette = "catppuccin";
+  colors.glove = "#f5c2e7";
+}
+```
+
+### Dot (`animated_dot_cursors`)
+
+Minimal dots and rings.
+
+#### Idle
+
+<img src="previews/dot/idle.gif" alt="dot idle loops" width="480">
+
+#### Transitions
+
+<img src="previews/dot/transitions.gif" alt="dot transitions" width="480">
+
+#### Palettes
+
+Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
+
+<img src="previews/dot/palettes.gif" alt="dot palettes" width="432">
+
+| Role | Colors |
+| --- | --- |
+| `ink` | fill |
+| `border` | outline |
+| `shadow` | drop shadow |
+
+```nix
+animated-cursors.packages.${system}.dot.override {
+  palette = "catppuccin";
+  colors.ink = "#f5c2e7";
+}
+```
 
 ### Shapes (`animated_shapes_cursors`)
 
@@ -60,37 +130,6 @@ Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
 animated-cursors.packages.${system}.shapes.override {
   palette = "catppuccin";
   colors.link = "#f5c2e7";
-}
-```
-
-### Dot (`animated_dot_cursors`)
-
-Minimal dots and rings.
-
-#### Idle
-
-<img src="previews/dot/idle.gif" alt="dot idle loops" width="480">
-
-#### Transitions
-
-<img src="previews/dot/transitions.gif" alt="dot transitions" width="480">
-
-#### Palettes
-
-Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
-
-<img src="previews/dot/palettes.gif" alt="dot palettes" width="432">
-
-| Role | Colors |
-| --- | --- |
-| `ink` | fill |
-| `border` | outline |
-| `shadow` | drop shadow |
-
-```nix
-animated-cursors.packages.${system}.dot.override {
-  palette = "catppuccin";
-  colors.ink = "#f5c2e7";
 }
 ```
 
@@ -135,52 +174,13 @@ animated-cursors.packages.${system}.fluid.override {
 }
 ```
 
-### Hand (`animated_hand_cursors`)
-
-Cel-shaded 3D gloves after Master Hand.
-
-#### Idle
-
-<img src="previews/hand/idle.gif" alt="hand idle loops" width="480">
-
-#### Transitions
-
-<img src="previews/hand/transitions.gif" alt="hand transitions" width="480">
-
-#### Palettes
-
-Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
-
-<img src="previews/hand/palettes.gif" alt="hand palettes" width="432">
-
-| Role | Colors |
-| --- | --- |
-| `glove` | glove |
-| `shade` | glove shading |
-| `ink` | outlines |
-| `text` | text cursors |
-| `resize` | resize cursors |
-| `crosshair` | crosshair |
-| `zoom` | zoom lens |
-| `busy` | busy cursors |
-| `copy` | copy badge |
-| `refuse` | no-drop and not-allowed |
-| `shadow` | drop shadow |
-
-```nix
-animated-cursors.packages.${system}.hand.override {
-  palette = "catppuccin";
-  colors.glove = "#f5c2e7";
-}
-```
-
 ## Build
 
 ```sh
-nix build .#shapes                       # theme in result/share/icons
+nix build .#hand                         # theme in result/share/icons
 nix build .#dot
+nix build .#shapes
 nix build .#fluid
-nix build .#hand
 nix build .#fluid-catppuccin             # every theme has -catppuccin and -gruvbox
 nix build .#niri --out-link result-niri  # patched Niri 26.04
 ```

@@ -486,11 +486,11 @@ fn glove(pose: &Pose, colors: &Palette, solids: &mut Vec<Solid>) {
     // The outer edge leans in from the pinky knuckle to the wrist.
     hand.push(oval(V(1.3, 2.9, 1.1)), V(2.3, 1.3, -0.15), Rot::z(16.0), tones, PALM);
     hand.push(oval(V(2.6, 2.2, 1.5)), V(0.0, 4.0, 0.0), Rot::IDENTITY, tones, PALM);
-    hand.joins = PALM;
     // Each finger melts into the palm at its base but keeps crisp joints.
     let chains = (0..4).map(|i| (finger(pose, i).to_vec(), FINGER + i as u8));
     for (joints, part) in chains.chain([(thumb(pose).to_vec(), THUMB)]) {
         for (j, pair) in joints.windows(2).enumerate() {
+            hand.joins = if j == 0 || part == THUMB { PALM } else { 0 };
             // The thumb's bone swells into the heel of the palm.
             hand.melt = match (j, part) {
                 (0, THUMB) => 1.1,

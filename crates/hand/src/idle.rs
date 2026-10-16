@@ -6,7 +6,7 @@ use std::f32::consts::{PI, TAU};
 use cursor_core::Shape;
 use cursor_core::motion::{bump, ease, window, wobble};
 
-use crate::rig::{GRIP, Pose, Prop, Scene, WRIST, fingertip, index_tip, palm_facing, reach, reach_root};
+use crate::rig::{GRIP, Pose, Prop, Scene, WRIST, index_tip, palm_facing, reach, reach_root};
 use crate::vector::{Rot, V};
 
 /// Gesture frame length in milliseconds.
@@ -261,15 +261,15 @@ pub fn bob(scene: Scene, phase: f32, length: u32) -> Scene {
     hand(scene, |p| Pose { tip: p.tip + 5.0 * s, roll: p.roll + 1.5 * s, ..p })
 }
 
-/// Milliseconds at rest, then gesture frames, of the middle finger.
-pub const FLIP: (u32, usize) = (1400, 36);
+/// Milliseconds at rest, then gesture frames, of a gesture held up.
+pub const THRUST: (u32, usize) = (1400, 36);
 
-/// The hand thrusts the raised middle finger up along itself twice in quick
-/// succession, swelling a little toward the viewer.
-pub fn flip(rest: Scene, u: f32) -> Scene {
+/// The hand thrusts twice in quick succession along `along`, the way its
+/// raised digit points, swelling a little toward the viewer.
+pub fn thrust(rest: Scene, u: f32, along: fn(&Pose) -> V) -> Scene {
     hand(rest, |p| {
         let thrust = (0.5 - 0.5 * (TAU * 2.0 * u).cos()).powf(1.5);
-        let along = (p.place(fingertip(&p, 1)) - p.place(reach_root(1))).normalized();
+        let along = along(&p).normalized();
         let wrist = p.place(WRIST);
         let swollen = Pose { size: p.size * (1.0 + 0.05 * thrust), ..p }.pinned(WRIST, wrist);
         Pose { at: swollen.at + along * (0.6 * thrust), ..swollen }

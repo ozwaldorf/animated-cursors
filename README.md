@@ -68,8 +68,8 @@ animated-cursors.packages.${system}.hand.override {
 
 #### Gestures
 
-`middle-finger` is installed as a cursor of its own. Alias a shape to it to
-use it in that shape's place.
+`middle-finger` and `thumbs-up` are installed as cursors of their
+own. Alias a shape to one to use it in that shape's place.
 
 ```sh
 cargo run --release -p hand-cursors -- --output build/hand --alias pointer=middle-finger

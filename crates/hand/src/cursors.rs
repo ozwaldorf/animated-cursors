@@ -8,7 +8,7 @@ use cursor_core::{Look, Shape};
 use crate::idle;
 use crate::rig::{
     GRIP, HOLD_TIP, HOLD_TURN, Hold, Kind, Pose, Prop, Props, Scene, fingertip, hips, index_tip, leg_length,
-    palm_facing, pinch_tip, prop, reach, reach_root,
+    palm_facing, pinch_tip, prop, reach, reach_root, thumb_tip,
 };
 use crate::vector::V;
 
@@ -153,6 +153,14 @@ fn middle_finger() -> Pose {
         ..point()
     };
     flip.pinned(fingertip(&flip, 1), ORIGIN)
+}
+
+/// A fist with the thumb raised, pointing into the screen with the cuff open
+/// out to the right and the curled fingers to the left, its thumb tip on the
+/// hotspot.
+fn thumbs_up() -> Pose {
+    let up = Pose { turn: 176.0, tip: 30.0, roll: -90.0, thumb: [80.0, 0.0, 0.0], ..fist() };
+    up.pinned(thumb_tip(&up), ORIGIN)
 }
 
 /// Point at `radius` and `degrees` from the hotspot.
@@ -345,14 +353,25 @@ const BUSY_DELAY: u32 = 30;
 const REST_STEP: u32 = 100;
 
 /// Gestures the glove makes as cursors of their own.
-pub const GESTURES: [&str; 1] = ["middle-finger"];
+pub const GESTURES: [&str; 2] = ["middle-finger", "thumbs-up"];
 
 /// The resting scene of a look, where transitions start and end.
 pub fn rest(look: Look) -> Scene {
-    match look {
-        Look::Shape(shape) => scene(shape, 0.0),
-        Look::Gesture("middle-finger") => Scene { hand: middle_finger(), props: Props::new() },
+    let hand = match look {
+        Look::Shape(shape) => return scene(shape, 0.0),
+        Look::Gesture("middle-finger") => middle_finger(),
+        Look::Gesture("thumbs-up") => thumbs_up(),
         Look::Gesture(name) => unreachable!("no gesture {name}"),
+    };
+    Scene { hand, props: Props::new() }
+}
+
+/// Which way a gesture's raised digit points, from the hand.
+fn raised(name: &str) -> fn(&Pose) -> V {
+    match name {
+        "middle-finger" => |p| p.place(fingertip(p, 1)) - p.place(reach_root(1)),
+        "thumbs-up" => |p| p.place(thumb_tip(p)) - p.at,
+        _ => unreachable!("no gesture {name}"),
     }
 }
 
@@ -363,8 +382,15 @@ pub fn rest(look: Look) -> Scene {
 pub fn frames(look: Look) -> (Vec<(Scene, u32)>, Vec<usize>) {
     let shape = match look {
         Look::Shape(shape) => shape,
-        Look::Gesture(_) => {
-            return looped(rest(look), idle::FLIP, vec![Some(0)], |rest, u, _| idle::flip(rest, u), idle::bob);
+        Look::Gesture(name) => {
+            let along = raised(name);
+            return looped(
+                rest(look),
+                idle::THRUST,
+                vec![Some(0)],
+                |rest, u, _| idle::thrust(rest, u, along),
+                idle::bob,
+            );
         }
     };
     if shape.is_busy() {
@@ -492,10 +518,14 @@ mod tests {
     }
 
     #[test]
-    fn middle_finger_touches_the_hotspot() {
-        let hand = rest(Look::Gesture("middle-finger")).hand;
-        let tip = hand.place(fingertip(&hand, 1));
-        assert!(tip.0.abs() < 1e-4 && tip.1.abs() < 1e-4);
+    fn gestures_touch_the_hotspot() {
+        type Tip = fn(&Pose) -> V;
+        let tips: [(&str, Tip); 2] = [("middle-finger", |p| fingertip(p, 1)), ("thumbs-up", thumb_tip)];
+        for (name, tip) in tips {
+            let hand = rest(Look::Gesture(name)).hand;
+            let tip = hand.place(tip(&hand));
+            assert!(tip.0.abs() < 1e-4 && tip.1.abs() < 1e-4, "{name}");
+        }
     }
 
     #[test]
@@ -506,7 +536,7 @@ mod tests {
         assert_eq!(aliases[0], Alias { shape: Shape::Pointer, target: Look::Gesture("middle-finger") });
         assert_eq!(aliases[2], Alias { shape: Shape::Text, target: Look::Shape(Shape::Default) });
         for bad in [
-            "pointer=thumbs-up",
+            "pointer=jazz-hands",
             "nowhere=middle-finger",
             "pointer",
             "pointer=pointer",

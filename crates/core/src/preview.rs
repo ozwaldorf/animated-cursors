@@ -125,8 +125,12 @@ pub fn previews<T: Theme>(theme: &T, directory: &Path, aliases: &[Alias]) -> io:
     });
     compose(&clips, COLUMNS, SIZE * 3 / 2, &directory.join("transitions.gif"))?;
 
-    let loops = parallel(&Shape::ALL, |&shape| {
-        let look = look(shape, aliases);
+    let idle_looks: Vec<Look> = Shape::ALL
+        .into_iter()
+        .map(|shape| look(shape, aliases))
+        .chain(T::GESTURES.iter().map(|&name| Look::Gesture(name)))
+        .collect();
+    let loops = parallel(&idle_looks, |&look| {
         let images = pixmaps(theme, &cursors[&look], *fit, SIZE);
         let steps = idle(&images, &cursors[&look], 1, true);
         (look, images, steps)

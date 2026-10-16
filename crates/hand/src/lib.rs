@@ -9,7 +9,7 @@ pub mod rig;
 pub mod solid;
 pub mod vector;
 
-use cursor_core::{Frame, Palette, Shape, Theme};
+use cursor_core::{Frame, Look, Palette, Shape, Theme};
 use tiny_skia::{Pixmap, Transform};
 
 use crate::rig::{Scene, blend};
@@ -30,6 +30,7 @@ impl Theme for Hand {
         ("catppuccin", include_str!("../colors/catppuccin.conf")),
         ("gruvbox", include_str!("../colors/gruvbox.conf")),
     ];
+    const GESTURES: &'static [&'static str] = &cursors::GESTURES;
 
     fn new(colors: Palette) -> Hand {
         Hand { colors }
@@ -40,18 +41,34 @@ impl Theme for Hand {
     }
 
     fn cursor(&self, shape: Shape) -> Vec<Frame<Scene>> {
-        cursors::frames(shape).0.into_iter().map(|(scene, delay)| Frame { scene, delay }).collect()
+        frames(Look::Shape(shape))
     }
 
     fn order(&self, shape: Shape) -> Vec<usize> {
-        cursors::frames(shape).1
+        cursors::frames(Look::Shape(shape)).1
+    }
+
+    fn gesture(&self, name: &'static str) -> Vec<Frame<Scene>> {
+        frames(Look::Gesture(name))
+    }
+
+    fn gesture_order(&self, name: &'static str) -> Vec<usize> {
+        cursors::frames(Look::Gesture(name)).1
     }
 
     fn transition(&self, from: Shape, to: Shape, t: f32) -> Scene {
-        blend(&cursors::scene(from, 0.0), &cursors::scene(to, 0.0), t)
+        self.morph(Look::Shape(from), Look::Shape(to), t)
+    }
+
+    fn morph(&self, from: Look, to: Look, t: f32) -> Scene {
+        blend(&cursors::rest(from), &cursors::rest(to), t)
     }
 
     fn draw(&self, scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
         render::draw(&self.colors, scene, pixmap, transform);
     }
+}
+
+fn frames(look: Look) -> Vec<Frame<Scene>> {
+    cursors::frames(look).0.into_iter().map(|(scene, delay)| Frame { scene, delay }).collect()
 }

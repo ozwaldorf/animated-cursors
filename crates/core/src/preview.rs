@@ -9,8 +9,10 @@ use std::path::Path;
 use tiny_skia::{Pixmap, PixmapPaint, Transform};
 
 use crate::palette::Palette;
-use crate::shape::{PAIRS, Shape};
-use crate::theme::{Cursors, Fit, Fitted, Sequence, Theme, cursor_sequence, fitted, parallel, pixmaps};
+use crate::shape::Shape;
+use crate::theme::{
+    Alias, Fitted, Look, Sequence, Theme, cursor_sequence, fitted, look, parallel, pixmaps, transition_sequence,
+};
 
 /// Nominal size of sheet cells, and of the tour.
 const SIZE: u32 = 64;
@@ -90,72 +92,82 @@ fn idle<S>(images: &[(Pixmap, (u32, u32))], sequence: &Sequence<S>, least: u32, 
     steps.collect()
 }
 
-/// Index in `PAIRS` of the transition between two cursors, and whether it
+/// Index in `pairs` of the transition between two cursors, and whether it
 /// plays backwards.
-fn between(from: Shape, to: Shape) -> (usize, bool) {
-    match PAIRS.iter().position(|&pair| pair == (from, to)) {
-        Some(index) => (index, false),
-        None => (PAIRS.iter().position(|&pair| pair == (to, from)).expect("tour stops are pairs"), true),
+fn between(pairs: &[(Look, Look)], from: Look, to: Look) -> Option<(usize, bool)> {
+    match pairs.iter().position(|&pair| pair == (from, to)) {
+        Some(index) => Some((index, false)),
+        None => pairs.iter().position(|&pair| pair == (to, from)).map(|index| (index, true)),
     }
 }
 
-/// Writes `tour.gif`, `transitions.gif`, `idle.gif` and `palettes.gif`.
-pub fn previews<T: Theme>(theme: &T, directory: &Path) -> io::Result<()> {
+/// Writes `tour.gif`, `transitions.gif`, `idle.gif` and `palettes.gif`, and
+/// for each gesture a shape is aliased to a `<gesture>.gif` going from
+/// default to the gesture and back.
+pub fn previews<T: Theme>(theme: &T, directory: &Path, aliases: &[Alias]) -> io::Result<()> {
     fs::create_dir_all(directory)?;
-    let Fitted { shapes, transitions, fit } = fitted(theme);
-    tour(theme, &shapes, &transitions, fit, &directory.join("tour.gif"))?;
+    let fitted = fitted(theme, aliases);
+    let Fitted { cursors, transitions, fit, .. } = &fitted;
+    let stops: Vec<Look> = TOUR.iter().map(|&shape| look(shape, aliases)).collect();
+    tour(theme, &stops, &fitted, &directory.join("tour.gif"))?;
+    for alias in aliases {
+        if let Look::Gesture(name) = alias.target {
+            let stops = [look(Shape::Default, aliases), alias.target];
+            tour(theme, &stops, &fitted, &directory.join(format!("{name}.gif")))?;
+        }
+    }
 
-    let clips = parallel(&transitions, |sequence| {
+    let clips = parallel(transitions, |sequence| {
         let last = sequence.frames.len() - 1;
         let hold = |index: usize, end: usize| if index == end { HOLD } else { STEP };
         let steps = (0..=last).map(|i| (i, hold(i, last))).chain((0..=last).rev().map(|i| (i, hold(i, 0))));
-        Clip::new(pixmaps(theme, sequence, fit, SIZE), steps)
+        Clip::new(pixmaps(theme, sequence, *fit, SIZE), steps)
     });
     compose(&clips, COLUMNS, SIZE * 3 / 2, &directory.join("transitions.gif"))?;
 
     let loops = parallel(&Shape::ALL, |&shape| {
-        let images = pixmaps(theme, &shapes[&shape], fit, SIZE);
-        let steps = idle(&images, &shapes[&shape], 1, true);
-        (shape, images, steps)
+        let look = look(shape, aliases);
+        let images = pixmaps(theme, &cursors[&look], *fit, SIZE);
+        let steps = idle(&images, &cursors[&look], 1, true);
+        (look, images, steps)
     });
     compose(&synchronized(loops), COLUMNS, SIZE * 3 / 2, &directory.join("idle.gif"))?;
 
     // One gesture each, so long shuffled loops stay short.
-    let swatches: Vec<(&str, Shape)> =
-        T::PALETTES.iter().flat_map(|&(name, _)| SWATCHES.map(|shape| (name, shape))).collect();
-    let loops = parallel(&swatches, |&(name, shape)| {
+    let swatches: Vec<(&str, Look)> =
+        T::PALETTES.iter().flat_map(|&(name, _)| SWATCHES.map(|shape| (name, look(shape, aliases)))).collect();
+    let loops = parallel(&swatches, |&(name, look)| {
         let theme = T::new(Palette::load::<T>(name).expect("bundled palettes parse"));
-        let sequence = cursor_sequence(&theme, shape);
-        let images = pixmaps(&theme, &sequence, fit, SIZE);
+        let sequence = cursor_sequence(&theme, look);
+        let images = pixmaps(&theme, &sequence, *fit, SIZE);
         let steps = idle(&images, &sequence, 1, false);
-        (shape, images, steps)
+        (look, images, steps)
     });
     compose(&synchronized(loops), SWATCHES.len() as u32, SIZE * 3 / 2, &directory.join("palettes.gif"))
 }
 
-fn tour<T: Theme>(
-    theme: &T,
-    shapes: &Cursors<T::Scene>,
-    transitions: &[Sequence<T::Scene>],
-    fit: Fit,
-    path: &Path,
-) -> io::Result<()> {
-    let legs: Vec<(Shape, Shape)> = TOUR.iter().zip(TOUR.iter().cycle().skip(1)).map(|(&a, &b)| (a, b)).collect();
-    let stops = parallel(&TOUR, |shape| pixmaps(theme, &shapes[shape], fit, TOUR_SIZE));
-    let moves = parallel(&legs, |&(from, to)| {
-        let (index, reversed) = between(from, to);
-        let mut images = pixmaps(theme, &transitions[index], fit, TOUR_SIZE);
-        if reversed {
-            images.reverse();
+/// Visits each of `stops` in turn, looping back to the first. Stops that are
+/// not a pair in `PAIRS` transition between them all the same.
+fn tour<T: Theme>(theme: &T, stops: &[Look], fitted: &Fitted<T::Scene>, path: &Path) -> io::Result<()> {
+    let Fitted { cursors, pairs, transitions, fit } = fitted;
+    let legs: Vec<(Look, Look)> = stops.iter().zip(stops.iter().cycle().skip(1)).map(|(&a, &b)| (a, b)).collect();
+    let moves = parallel(&legs, |&(from, to)| match between(pairs, from, to) {
+        Some((index, reversed)) => {
+            let mut images = pixmaps(theme, &transitions[index], *fit, TOUR_SIZE);
+            if reversed {
+                images.reverse();
+            }
+            images
         }
-        images
+        None => pixmaps(theme, &transition_sequence(theme, (from, to), cursors), *fit, TOUR_SIZE),
     });
+    let visits = parallel(stops, |look| pixmaps(theme, &cursors[look], *fit, TOUR_SIZE));
     let (mut images, mut steps) = (Images::new(), Vec::new());
-    for (n, (shape, (stop, leg))) in TOUR.iter().zip(stops.into_iter().zip(moves)).enumerate() {
+    for (n, (look, (stop, leg))) in stops.iter().zip(visits.into_iter().zip(moves)).enumerate() {
         let offset = images.len();
-        let stay = match TOUR[..n].contains(shape) {
-            false => idle(&stop, &shapes[shape], STOP, false),
-            true => vec![(shapes[shape].order[0], HOLD)],
+        let stay = match stops[..n].contains(look) {
+            false => idle(&stop, &cursors[look], STOP, false),
+            true => vec![(cursors[look].order[0], HOLD)],
         };
         steps.extend(stay.into_iter().map(|(index, delay)| (offset + index, delay)));
         images.extend(stop);
@@ -169,16 +181,16 @@ fn tour<T: Theme>(
 /// Loops that all restart together: each plays as many whole times as fit in
 /// the longest, then rests on its first frame. Busy loops never rest, so they
 /// stretch to fill it instead.
-fn synchronized(loops: Vec<(Shape, Images, Steps)>) -> Vec<Clip> {
+fn synchronized(loops: Vec<(Look, Images, Steps)>) -> Vec<Clip> {
     let period = |steps: &[(usize, u32)]| if steps.len() > 1 { steps.iter().map(|(_, delay)| delay).sum() } else { 0 };
     let longest = loops.iter().map(|(_, _, steps)| period(steps)).max().unwrap_or(0).max(HOLD);
     loops
         .into_iter()
-        .map(|(shape, images, steps)| {
+        .map(|(look, images, steps)| {
             let span = period(&steps);
             let (loops, stretch) = match span {
                 0 => (1, 1.0),
-                _ if shape.is_busy() => {
+                _ if look.is_busy() => {
                     let loops = (longest as f32 / span as f32).round() as u32;
                     (loops, longest as f32 / (loops * span) as f32)
                 }
@@ -187,7 +199,7 @@ fn synchronized(loops: Vec<(Shape, Images, Steps)>) -> Vec<Clip> {
             let once: Vec<(u32, usize)> = Clip::new(Vec::new(), steps.iter().copied()).starts;
             let played = (0..loops).flat_map(|n| once.iter().map(move |&(time, index)| (n * span + time, index)));
             let at = |(time, index): (u32, usize)| ((time as f32 * stretch).round() as u32, index);
-            let rest = (span > 0 && !shape.is_busy()).then(|| (loops * span, steps[0].0));
+            let rest = (span > 0 && !look.is_busy()).then(|| (loops * span, steps[0].0));
             Clip { images, starts: played.chain(rest).map(at).collect(), length: longest }
         })
         .collect()
@@ -301,6 +313,7 @@ fn gif(path: &Path, frames: impl IntoIterator<Item = (Pixmap, u16)>) -> io::Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shape::PAIRS;
 
     #[test]
     fn tour_legs_are_pairs() {

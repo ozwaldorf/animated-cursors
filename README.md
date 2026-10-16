@@ -21,6 +21,11 @@ and `gruvbox`. Pick one with `--palette`, or pass a path to your own
 `role = #rrggbb` file (see `crates/<theme>/colors`). With the flake, override
 `palette` and any role in `colors`.
 
+Override a cursor with another with `--alias SHAPE=CURSOR,...` (with the flake,
+`aliases.<shape> = "<cursor>"`): the shape installs as a link to the cursor,
+and its transitions start and end on it. With `--preview`, aliasing to a
+gesture also writes `<gesture>.gif`, going from default to the gesture and back.
+
 ### Hand (`animated_hand_cursors`)
 
 Cel-shaded 3D gloves after Master Hand.
@@ -58,6 +63,21 @@ Rows are Carburetor, Catppuccin Mocha and Gruvbox dark.
 animated-cursors.packages.${system}.hand.override {
   palette = "catppuccin";
   colors.glove = "#f5c2e7";
+}
+```
+
+#### Gestures
+
+`middle-finger` is installed as a cursor of its own. Alias a shape to it to
+use it in that shape's place.
+
+```sh
+cargo run --release -p hand-cursors -- --output build/hand --alias pointer=middle-finger
+```
+
+```nix
+animated-cursors.packages.${system}.hand.override {
+  aliases.pointer = "middle-finger";
 }
 ```
 

@@ -6,7 +6,7 @@ use std::f32::consts::{PI, TAU};
 use cursor_core::Shape;
 use cursor_core::motion::{bump, ease, window, wobble};
 
-use crate::rig::{GRIP, Pose, Prop, Scene, WRIST, index_tip, palm_facing, reach, reach_root};
+use crate::rig::{GRIP, Pose, Prop, Scene, WRIST, fingertip, index_tip, palm_facing, reach, reach_root};
 use crate::vector::{Rot, V};
 
 /// Gesture frame length in milliseconds.
@@ -141,7 +141,7 @@ pub fn gesture(shape: Shape, rest: Scene, u: f32, variant: usize) -> Scene {
             let thrust = bump(u, 0.05, 0.3) + bump(u, 0.5, 0.3);
             let tip = p.place(index_tip(&p));
             let along = (tip - p.place(reach_root(0))).normalized();
-            let pushed = Pose { at: p.at + along * (1.2 * thrust), ..p };
+            let pushed = Pose { at: p.at + along * (0.6 * thrust), ..p };
             let mut flex = pushed.flex;
             flex[0] = reach(&pushed, 0, tip);
             Pose { flex, ..pushed }
@@ -232,8 +232,7 @@ pub const BOB: u32 = 2200;
 /// milliseconds long: the pointer sways on its fingertip, default drifts
 /// around the hotspot, and the rest bob up and down with what they hold.
 pub fn hover(shape: Shape, scene: Scene, phase: f32, length: u32) -> Scene {
-    let cycles = (length as f32 / BOB as f32).round().max(1.0);
-    let (s, c) = (2.0 * PI * cycles * phase).sin_cos();
+    let (s, c) = swing(phase, length);
     match shape {
         Shape::Pointer => {
             let still = scene.hand;
@@ -244,9 +243,35 @@ pub fn hover(shape: Shape, scene: Scene, phase: f32, length: u32) -> Scene {
             let scene = moved(scene, V(0.3 * s * c, -0.35 * s, 0.0));
             hand(scene, |p| Pose { turn: p.turn + 6.0 * s, roll: p.roll + 1.5 * s, ..p })
         }
-        _ => {
-            let scene = moved(scene, V(0.0, -0.5 * s, 0.0));
-            hand(scene, |p| Pose { tip: p.tip + 5.0 * s, roll: p.roll + 1.5 * s, ..p })
-        }
+        _ => bob(scene, phase, length),
     }
+}
+
+/// Sine and cosine of the hover at `phase` through a segment `length`
+/// milliseconds long, fitting whole bobs.
+fn swing(phase: f32, length: u32) -> (f32, f32) {
+    let cycles = (length as f32 / BOB as f32).round().max(1.0);
+    (2.0 * PI * cycles * phase).sin_cos()
+}
+
+/// The scene bobbing up and down with what it holds, as `hover`.
+pub fn bob(scene: Scene, phase: f32, length: u32) -> Scene {
+    let s = swing(phase, length).0;
+    let scene = moved(scene, V(0.0, -0.5 * s, 0.0));
+    hand(scene, |p| Pose { tip: p.tip + 5.0 * s, roll: p.roll + 1.5 * s, ..p })
+}
+
+/// Milliseconds at rest, then gesture frames, of the middle finger.
+pub const FLIP: (u32, usize) = (1400, 36);
+
+/// The hand thrusts the raised middle finger up along itself twice in quick
+/// succession, swelling a little toward the viewer.
+pub fn flip(rest: Scene, u: f32) -> Scene {
+    hand(rest, |p| {
+        let thrust = (0.5 - 0.5 * (TAU * 2.0 * u).cos()).powf(1.5);
+        let along = (p.place(fingertip(&p, 1)) - p.place(reach_root(1))).normalized();
+        let wrist = p.place(WRIST);
+        let swollen = Pose { size: p.size * (1.0 + 0.05 * thrust), ..p }.pinned(WRIST, wrist);
+        Pose { at: swollen.at + along * (0.6 * thrust), ..swollen }
+    })
 }

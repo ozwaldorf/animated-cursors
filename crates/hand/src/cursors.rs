@@ -3,12 +3,12 @@
 
 use std::f32::consts::{PI, TAU};
 
-use cursor_core::Shape;
+use cursor_core::{Look, Shape};
 
 use crate::idle;
 use crate::rig::{
-    GRIP, HOLD_TIP, HOLD_TURN, Hold, Kind, Pose, Prop, Props, Scene, hips, index_tip, leg_length, palm_facing,
-    pinch_tip, prop, reach, reach_root,
+    GRIP, HOLD_TIP, HOLD_TURN, Hold, Kind, Pose, Prop, Props, Scene, fingertip, hips, index_tip, leg_length,
+    palm_facing, pinch_tip, prop, reach, reach_root,
 };
 use crate::vector::V;
 
@@ -138,6 +138,21 @@ fn wagging() -> Pose {
     let mut flex = [[0.0; 3]; 4];
     flex[0] = [6.0, 14.0, 9.8];
     Pose { turn: -10.0, tip: 5.0, flex, ..point() }.pinned(reach_root(0), ORIGIN)
+}
+
+/// The middle finger raised, the others curled with the thumb across them,
+/// back of the hand to the viewer, its fingertip on the hotspot.
+fn middle_finger() -> Pose {
+    let flip = Pose {
+        turn: 40.0,
+        tip: 10.0,
+        size: 0.85,
+        spread: [-6.0, 0.0, 4.0, 9.0],
+        curl: [0.95, 0.0, 0.95, 0.97],
+        thumb: [38.0, 25.0, 0.8],
+        ..point()
+    };
+    flip.pinned(fingertip(&flip, 1), ORIGIN)
 }
 
 /// Point at `radius` and `degrees` from the hotspot.
@@ -329,19 +344,52 @@ const BUSY_DELAY: u32 = 30;
 /// Length of a resting frame in milliseconds, while the hand hovers.
 const REST_STEP: u32 = 100;
 
-/// Frames of an ordinary cursor and the order they play in: a busy loop, or
-/// the segments of its idle pattern, each a hovering rest and perhaps a
-/// gesture. Each distinct segment is posed once and played wherever the
-/// pattern repeats it, its hover starting afresh so the repeats match.
-pub fn frames(shape: Shape) -> (Vec<(Scene, u32)>, Vec<usize>) {
+/// Gestures the glove makes as cursors of their own.
+pub const GESTURES: [&str; 1] = ["middle-finger"];
+
+/// The resting scene of a look, where transitions start and end.
+pub fn rest(look: Look) -> Scene {
+    match look {
+        Look::Shape(shape) => scene(shape, 0.0),
+        Look::Gesture("middle-finger") => Scene { hand: middle_finger(), props: Props::new() },
+        Look::Gesture(name) => unreachable!("no gesture {name}"),
+    }
+}
+
+/// Frames of a look and the order they play in: a busy loop, or the segments
+/// of its idle pattern, each a hovering rest and perhaps a gesture. Each
+/// distinct segment is posed once and played wherever the pattern repeats it,
+/// its hover starting afresh so the repeats match.
+pub fn frames(look: Look) -> (Vec<(Scene, u32)>, Vec<usize>) {
+    let shape = match look {
+        Look::Shape(shape) => shape,
+        Look::Gesture(_) => {
+            return looped(rest(look), idle::FLIP, vec![Some(0)], |rest, u, _| idle::flip(rest, u), idle::bob);
+        }
+    };
     if shape.is_busy() {
         let frames: Vec<_> =
             (0..BUSY_FRAMES).map(|i| (scene(shape, i as f32 / BUSY_FRAMES as f32), BUSY_DELAY)).collect();
         return (frames, (0..BUSY_FRAMES).collect());
     }
-    let (hold, count) = idle::timing(shape);
-    let rest = scene(shape, 0.0);
-    let pattern = idle::pattern(shape);
+    looped(
+        rest(look),
+        idle::timing(shape),
+        idle::pattern(shape),
+        |rest, u, variant| idle::gesture(shape, rest, u, variant),
+        |scene, phase, length| idle::hover(shape, scene, phase, length),
+    )
+}
+
+/// Idle frames of `rest` played in `pattern`, holding then playing `count`
+/// frames of `gesture`, all floating by `hover`.
+fn looped(
+    rest: Scene,
+    (hold, count): (u32, usize),
+    pattern: Vec<Option<usize>>,
+    gesture: impl Fn(Scene, f32, usize) -> Scene,
+    hover: impl Fn(Scene, f32, u32) -> Scene,
+) -> (Vec<(Scene, u32)>, Vec<usize>) {
     let mut segments: Vec<Option<usize>> = Vec::new();
     for segment in &pattern {
         if !segments.contains(segment) {
@@ -355,20 +403,20 @@ pub fn frames(shape: Shape) -> (Vec<(Scene, u32)>, Vec<usize>) {
             None => idle::BOB,
         };
         // A gesture with no rest before it starts at rest itself, so it loops.
-        let gesture = segment.map_or(0..0, |_| usize::from(resting > 0)..count);
+        let moving = segment.map_or(0..0, |_| usize::from(resting > 0)..count);
         let steps: Vec<(Option<f32>, u32)> = (0..resting / REST_STEP)
             .map(|_| (None, REST_STEP))
-            .chain(gesture.map(|i| (Some(i as f32 / count as f32), idle::STEP)))
+            .chain(moving.map(|i| (Some(i as f32 / count as f32), idle::STEP)))
             .collect();
         let length: u32 = steps.iter().map(|(_, delay)| delay).sum();
         spans.push((frames.len(), steps.len()));
         let mut time = 0;
         for (u, delay) in steps {
             let posed = match (u, segment) {
-                (Some(u), Some(variant)) => idle::gesture(shape, rest.clone(), u, *variant),
+                (Some(u), Some(variant)) => gesture(rest.clone(), u, *variant),
                 _ => rest.clone(),
             };
-            frames.push((idle::hover(shape, posed, time as f32 / length as f32, length), delay));
+            frames.push((hover(posed, time as f32 / length as f32, length), delay));
             time += delay;
         }
     }
@@ -440,6 +488,32 @@ mod tests {
             let hand = scene(shape, 0.0).hand;
             let tip = hand.place(index_tip(&hand));
             assert!(tip.0.abs() < 1e-4 && tip.1.abs() < 1e-4, "{shape:?}");
+        }
+    }
+
+    #[test]
+    fn middle_finger_touches_the_hotspot() {
+        let hand = rest(Look::Gesture("middle-finger")).hand;
+        let tip = hand.place(fingertip(&hand, 1));
+        assert!(tip.0.abs() < 1e-4 && tip.1.abs() < 1e-4);
+    }
+
+    #[test]
+    fn aliases_parse() {
+        use cursor_core::Alias;
+        let parse = Alias::parse::<crate::Hand>;
+        let aliases = parse("pointer=middle-finger, kill=middle-finger,text=default").unwrap();
+        assert_eq!(aliases[0], Alias { shape: Shape::Pointer, target: Look::Gesture("middle-finger") });
+        assert_eq!(aliases[2], Alias { shape: Shape::Text, target: Look::Shape(Shape::Default) });
+        for bad in [
+            "pointer=thumbs-up",
+            "nowhere=middle-finger",
+            "pointer",
+            "pointer=pointer",
+            "pointer=middle-finger,pointer=default",
+            "pointer=default,default=text",
+        ] {
+            assert!(parse(bad).is_err(), "{bad}");
         }
     }
 }

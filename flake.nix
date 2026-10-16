@@ -29,14 +29,16 @@
               ) (lib.splitString "\n" (builtins.readFile file))
             );
           # Builds a theme crate in a bundled palette (crates/<style>/colors) with
-          # any `colors` roles replaced, writes the theme, then checks the crate
-          # against what it wrote. Override either with `.override { ... }`.
+          # any `colors` roles replaced and any `aliases` (shape = cursor) set,
+          # writes the theme, then checks the crate against what it wrote.
+          # Override any with `.override { ... }`.
           theme = lib.makeOverridable (
             {
               style,
               id,
               palette ? "carburetor",
               colors ? { },
+              aliases ? { },
             }:
             let
               merged = readPalette ./crates/${style}/colors/${palette}.conf // colors;
@@ -44,6 +46,8 @@
                 lib.concatStrings (lib.mapAttrsToList (role: color: "${role} = ${color}\n") merged)
               );
               choice = if colors == { } then palette else "${file}/${palette}.conf";
+              aliasList = lib.concatStringsSep "," (lib.mapAttrsToList (shape: cursor: "${shape}=${cursor}") aliases);
+              args = "--palette ${choice}" + lib.optionalString (aliases != { }) " --alias ${aliasList}";
             in
             pkgs.rustPlatform.buildRustPackage {
               pname = "${style}-cursors-${palette}";
@@ -67,13 +71,14 @@
                 "${style}-cursors"
               ];
               CURSOR_PALETTE = choice;
+              CURSOR_ALIASES = aliasList;
               # The theme is rendered once, before the tests check it.
               CURSOR_OUTPUT = "${placeholder "out"}/share/icons/${id}";
               preCheck = ''
-                "$tmpDir/${style}-cursors" --palette ${choice} --output "$CURSOR_OUTPUT"
+                "$tmpDir/${style}-cursors" ${args} --output "$CURSOR_OUTPUT"
               '';
               postInstall = ''
-                [ -e "$CURSOR_OUTPUT" ] || $out/bin/${style}-cursors --palette ${choice} --output "$CURSOR_OUTPUT"
+                [ -e "$CURSOR_OUTPUT" ] || $out/bin/${style}-cursors ${args} --output "$CURSOR_OUTPUT"
                 rm -r "$out/bin"
               '';
               meta.license = lib.licenses.gpl3Plus;

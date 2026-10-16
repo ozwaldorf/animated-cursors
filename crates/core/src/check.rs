@@ -5,8 +5,11 @@ use std::fs;
 use std::path::Path;
 
 use crate::palette::Palette;
-use crate::shape::{LEGACY_ALIASES, PAIRS, Shape};
-use crate::theme::{PAINTED, SIZES, TRANSITION_DELAY, TRANSITION_FRAMES, Theme, generate, transition_names};
+use crate::shape::PAIRS;
+use crate::theme::{
+    Alias, Look, PAINTED, SIZES, TRANSITION_DELAY, TRANSITION_FRAMES, Theme, cursor_links, generate, look, looks,
+    order, transition_links,
+};
 use crate::xcursor::{Image, decode};
 
 fn read(cursors: &Path, name: &str) -> HashMap<u32, Vec<Image>> {
@@ -43,46 +46,53 @@ fn span(image: &Image) -> u32 {
     });
     x1.saturating_sub(x0).max(y1.saturating_sub(y0))
 }
-
 /// Generates the theme in every bundled palette, or only in `CURSOR_PALETTE`
-/// (a name or file) when set, and checks each. With `CURSOR_OUTPUT` set, checks
-/// the theme already written there instead.
+/// (a name or file) when set, and checks each, with any `CURSOR_ALIASES`. With
+/// `CURSOR_OUTPUT` set, checks the theme already written there instead.
 pub fn theme<T: Theme>() {
+    let aliases = std::env::var("CURSOR_ALIASES").map_or(Ok(Vec::new()), |list| Alias::parse::<T>(&list)).unwrap();
     let load = |choice: &str| T::new(Palette::load::<T>(choice).unwrap());
     let palette = std::env::var("CURSOR_PALETTE");
     if let Ok(output) = std::env::var("CURSOR_OUTPUT") {
-        return checked(&load(&palette.unwrap_or_else(|_| T::PALETTES[0].0.to_owned())), Path::new(&output));
+        let theme = load(&palette.unwrap_or_else(|_| T::PALETTES[0].0.to_owned()));
+        return checked(&theme, Path::new(&output), &aliases);
     }
     let choices = match palette {
         Ok(choice) => vec![choice],
         Err(_) => T::PALETTES.iter().map(|(name, _)| name.to_string()).collect(),
     };
     for choice in choices {
-        generated(&load(&choice));
+        generated(&load(&choice), &aliases);
     }
 }
 
+/// Generates the theme in its default palette with `aliases` and checks it.
+pub fn aliased<T: Theme>(aliases: &[Alias]) {
+    generated(&T::new(Palette::load::<T>(T::PALETTES[0].0).unwrap()), aliases);
+}
+
 /// Generates the theme into a temporary directory and checks it.
-fn generated<T: Theme>(theme: &T) {
+fn generated<T: Theme>(theme: &T, aliases: &[Alias]) {
     let name = &theme.palette().name;
-    let output = std::env::temp_dir().join(format!("{}-{name}-check-{}", T::ID, std::process::id()));
+    let output = std::env::temp_dir().join(format!("{}-{name}-{}-check-{}", T::ID, aliases.len(), std::process::id()));
     let _ = fs::remove_dir_all(&output);
-    generate(theme, &output, &SIZES).unwrap();
-    checked(theme, &output);
+    generate(theme, &output, &SIZES, aliases).unwrap();
+    checked(theme, &output, aliases);
     fs::remove_dir_all(&output).unwrap();
 }
 
 /// Checks a theme written to `output`.
-fn checked<T: Theme>(theme: &T, output: &Path) {
+fn checked<T: Theme>(theme: &T, output: &Path, aliases: &[Alias]) {
     let cursors = output.join("cursors");
     let mut largest: HashMap<u32, u32> = HashMap::new();
 
-    let shapes: HashMap<Shape, _> = Shape::ALL.into_iter().map(|shape| (shape, read(&cursors, shape.name()))).collect();
-    for (shape, sizes) in &shapes {
-        let expected = theme.order(*shape).len();
-        assert_eq!(sizes.len(), SIZES.len(), "{shape:?}");
+    let looks: HashMap<Look, _> =
+        looks::<T>(aliases).into_iter().map(|look| (look, read(&cursors, look.name()))).collect();
+    for (look, sizes) in &looks {
+        let expected = order(theme, *look).len();
+        assert_eq!(sizes.len(), SIZES.len(), "{look:?}");
         for (size, frames) in sizes {
-            let context = format!("{shape:?} at {size}");
+            let context = format!("{look:?} at {size}");
             assert_eq!(frames.len(), expected, "{context}");
             for image in frames {
                 assert_shape(image, &context);
@@ -96,11 +106,11 @@ fn checked<T: Theme>(theme: &T, output: &Path) {
     }
 
     for (a, b) in PAIRS {
-        let names = transition_names(a, b);
-        let transition = read(&cursors, &names[0]);
+        let name = format!("{}-to-{}", a.name(), b.name());
+        let transition = read(&cursors, &name);
         for size in SIZES {
             let frames = &transition[&size];
-            let context = format!("{} at {size}", names[0]);
+            let context = format!("{name} at {size}");
             assert_eq!(frames.len(), TRANSITION_FRAMES, "{context}");
             for image in frames {
                 assert_shape(image, &context);
@@ -111,15 +121,10 @@ fn checked<T: Theme>(theme: &T, output: &Path) {
                 largest.entry(size).and_modify(|max| *max = span.max(*max)).or_insert(span);
             }
             for (endpoint, shape) in [(&frames[0], a), (&frames[TRANSITION_FRAMES - 1], b)] {
-                let cursor = &shapes[&shape][&size][0];
+                let cursor = &looks[&look(shape, aliases)][&size][0];
                 assert_eq!((endpoint.xhot, endpoint.yhot), (cursor.xhot, cursor.yhot), "{context} endpoint hotspot");
                 assert!(endpoint.pixels == cursor.pixels, "{context} endpoint differs from {shape:?}");
             }
-        }
-        for name in &names[1..] {
-            let link = cursors.join(name);
-            assert!(link.is_symlink(), "{name}");
-            assert_eq!(fs::canonicalize(&link).unwrap(), fs::canonicalize(cursors.join(&names[0])).unwrap());
         }
     }
 
@@ -127,9 +132,10 @@ fn checked<T: Theme>(theme: &T, output: &Path) {
         assert!(span + 6 >= size, "largest cursor spans only {span} of {size} px");
     }
 
-    let aliases = Shape::ALL.into_iter().flat_map(|shape| shape.aliases().iter().map(move |name| (shape, *name)));
-    let legacy = LEGACY_ALIASES.into_iter().flat_map(|(shape, names)| names.iter().map(move |name| (shape, *name)));
-    for (shape, name) in aliases.chain(legacy) {
-        assert_eq!(fs::read_link(cursors.join(name)).unwrap(), Path::new(shape.name()), "{name}");
+    for (name, target) in transition_links(aliases) {
+        assert_eq!(fs::read_link(cursors.join(&name)).unwrap(), Path::new(&target), "{name}");
+    }
+    for (name, target) in cursor_links(aliases) {
+        assert_eq!(fs::read_link(cursors.join(name)).unwrap(), Path::new(target), "{name}");
     }
 }

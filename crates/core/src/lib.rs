@@ -14,4 +14,4 @@ pub mod xcursor;
 
 pub use palette::Palette;
 pub use shape::Shape;
-pub use theme::{Frame, Theme};
+pub use theme::{Alias, Frame, Look, Theme};

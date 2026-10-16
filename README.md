@@ -68,7 +68,7 @@ animated-cursors.packages.${system}.hand.override {
 
 #### Gestures
 
-`middle-finger` and `thumbs-up` are installed as cursors of their
+`middle-finger`, `thumbs-up` and `peace-sign` are installed as cursors of their
 own. Alias a shape to one to use it in that shape's place.
 
 ```sh

@@ -275,3 +275,19 @@ pub fn thrust(rest: Scene, u: f32, along: fn(&Pose) -> V) -> Scene {
         Pose { at: swollen.at + along * (0.6 * thrust), ..swollen }
     })
 }
+
+/// The raised fingers bend alternately while keeping their V spread.
+pub fn wiggle(rest: Scene, u: f32) -> Scene {
+    hand(rest, |p| {
+        let wave = (TAU * 2.0 * u).sin();
+        let envelope = (PI * u).sin().powi(2);
+        let mut flex = p.flex;
+        for (finger, phase) in [wave, -wave].into_iter().enumerate() {
+            let bend = envelope * (0.5 + 0.5 * phase);
+            for (joint, amount) in [8.0, 22.0, 14.0].into_iter().enumerate() {
+                flex[finger][joint] += amount * bend;
+            }
+        }
+        Pose { flex, ..p }
+    })
+}

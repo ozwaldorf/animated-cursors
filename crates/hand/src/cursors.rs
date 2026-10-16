@@ -163,6 +163,22 @@ fn thumbs_up() -> Pose {
     up.pinned(thumb_tip(&up), ORIGIN)
 }
 
+/// Index and middle raised in a V, the others curled under the thumb, palm
+/// to the viewer, its index fingertip on the hotspot.
+fn peace_sign() -> Pose {
+    let peace = Pose {
+        turn: 180.0,
+        tip: 10.0,
+        roll: -8.0,
+        size: 0.96,
+        spread: [-12.0, 10.0, 6.0, 10.0],
+        curl: [0.0, 0.0, 0.95, 0.97],
+        thumb: [35.0, 20.0, 0.9],
+        ..point()
+    };
+    peace.pinned(index_tip(&peace), ORIGIN)
+}
+
 /// Point at `radius` and `degrees` from the hotspot.
 fn around(radius: f32, degrees: f32) -> V {
     let (s, c) = degrees.to_radians().sin_cos();
@@ -353,7 +369,7 @@ const BUSY_DELAY: u32 = 30;
 const REST_STEP: u32 = 100;
 
 /// Gestures the glove makes as cursors of their own.
-pub const GESTURES: [&str; 2] = ["middle-finger", "thumbs-up"];
+pub const GESTURES: [&str; 3] = ["middle-finger", "thumbs-up", "peace-sign"];
 
 /// The resting scene of a look, where transitions start and end.
 pub fn rest(look: Look) -> Scene {
@@ -361,6 +377,7 @@ pub fn rest(look: Look) -> Scene {
         Look::Shape(shape) => return scene(shape, 0.0),
         Look::Gesture("middle-finger") => middle_finger(),
         Look::Gesture("thumbs-up") => thumbs_up(),
+        Look::Gesture("peace-sign") => peace_sign(),
         Look::Gesture(name) => unreachable!("no gesture {name}"),
     };
     Scene { hand, props: Props::new() }
@@ -382,6 +399,9 @@ fn raised(name: &str) -> fn(&Pose) -> V {
 pub fn frames(look: Look) -> (Vec<(Scene, u32)>, Vec<usize>) {
     let shape = match look {
         Look::Shape(shape) => shape,
+        Look::Gesture("peace-sign") => {
+            return looped(rest(look), idle::THRUST, vec![Some(0)], |rest, u, _| idle::wiggle(rest, u), idle::bob);
+        }
         Look::Gesture(name) => {
             let along = raised(name);
             return looped(
@@ -520,7 +540,8 @@ mod tests {
     #[test]
     fn gestures_touch_the_hotspot() {
         type Tip = fn(&Pose) -> V;
-        let tips: [(&str, Tip); 2] = [("middle-finger", |p| fingertip(p, 1)), ("thumbs-up", thumb_tip)];
+        let tips: [(&str, Tip); 3] =
+            [("middle-finger", |p| fingertip(p, 1)), ("thumbs-up", thumb_tip), ("peace-sign", index_tip)];
         for (name, tip) in tips {
             let hand = rest(Look::Gesture(name)).hand;
             let tip = hand.place(tip(&hand));

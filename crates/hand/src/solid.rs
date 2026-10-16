@@ -152,15 +152,23 @@ impl Model {
     /// Indices of every solid that could reach within `reach` of the box
     /// from (`x0`, `y0`) to (`x1`, `y1`), with whole blends kept together.
     pub fn near(&self, (x0, y0): (f32, f32), (x1, y1): (f32, f32), reach: f32) -> Vec<u16> {
+        let all: Vec<u16> = (0..self.solids.len() as u16).collect();
+        self.keep(&all, |(c, r)| {
+            let dx = (x0 - c.0).max(c.0 - x1).max(0.0);
+            let dy = (y0 - c.1).max(c.1 - y1).max(0.0);
+            dx.hypot(dy) <= r + reach
+        })
+    }
+
+    /// The solids of `subset` whose bounding sphere passes `close`, with
+    /// whole blends kept together.
+    pub fn keep(&self, subset: &[u16], close: impl Fn((V, f32)) -> bool) -> Vec<u16> {
         let mut hit = [false; BODIES];
-        let close: Vec<bool> = self
-            .solids
+        let close: Vec<bool> = subset
             .iter()
-            .map(|solid| {
-                let (c, r) = solid.bound();
-                let dx = (x0 - c.0).max(c.0 - x1).max(0.0);
-                let dy = (y0 - c.1).max(c.1 - y1).max(0.0);
-                let close = dx.hypot(dy) <= r + reach;
+            .map(|&i| {
+                let solid = &self.solids[i as usize];
+                let close = close(solid.bound());
                 hit[solid.body as usize] |= close;
                 close
             })
@@ -170,7 +178,12 @@ impl Model {
             (hit[b.from as usize], hit[b.to as usize]) = (both, both);
         }
         let blended = |body: u8| self.partner(body).is_some() && hit[body as usize];
-        (0..self.solids.len()).filter(|&i| close[i] || blended(self.solids[i].body)).map(|i| i as u16).collect()
+        subset
+            .iter()
+            .zip(close)
+            .filter(|&(&i, close)| close || blended(self.solids[i as usize].body))
+            .map(|(&i, _)| i)
+            .collect()
     }
 
     /// Distance to the nearest surface at `p` and the index of the solid

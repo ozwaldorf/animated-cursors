@@ -65,7 +65,11 @@ impl Theme for Hand {
     }
 
     fn draw(&self, scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
-        render::draw(&self.colors, scene, pixmap, transform);
+        render::draw(&self.colors, scene, pixmap, transform, true);
+    }
+
+    fn silhouette(&self, scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
+        render::draw(&self.colors, scene, pixmap, transform, false);
     }
 }
 

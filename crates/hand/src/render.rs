@@ -2,7 +2,8 @@
 //! a specular glint, in shadow wherever another part blocks the light. Ink
 //! traces the silhouette, edges that pass in front of another surface, and
 //! seams where parts meet. The hand casts a drop shadow on a backdrop behind
-//! it.
+//! it. Each pixel is sampled once at its center, and supersampled only where
+//! it differs from a neighbor or straddles an ink edge.
 
 use cursor_core::Palette;
 use cursor_core::color::{Color, encode, hex, mix};
@@ -25,11 +26,15 @@ const PENUMBRA: f32 = 0.025;
 const SHADOW_OPACITY: f32 = 0.35;
 /// Edge width of shadows cast on the hand, kept crisp like the shading.
 const CAST: f32 = 0.01;
+/// Tile side in pixels.
 const TILE: usize = 8;
 const STEPS: usize = 112;
 const SURFACE: f32 = 2e-3;
 /// How strongly creases fall into shadow.
 const OCCLUSION: f32 = 0.7;
+/// Largest channel difference from a neighbor that a pixel's center sample
+/// may show and still stand for the whole pixel.
+const SMOOTH: f32 = 0.02;
 
 fn light() -> V {
     V(-0.45, -0.7, 0.6).normalized()
@@ -44,15 +49,24 @@ fn backlight() -> V {
 
 /// Share of the light reaching `p` from `dir`, marched until the ray passes
 /// `front`, its edge widening by `softness` per unit of distance from what
-/// blocks it.
-fn visibility(model: &Model, subset: &[u16], p: V, dir: V, front: f32, softness: f32) -> f32 {
+/// blocks it. Only solids whose bounds pass within `swell` of the ray, plus
+/// the penumbra, can block it.
+fn visibility(model: &Model, subset: &[u16], p: V, dir: V, (front, swell): (f32, f32), softness: f32) -> f32 {
+    let end = ((front - p.2) / dir.2).max(0.0);
+    let subset = model.keep(subset, |(c, r)| {
+        let along = (c - p).dot(dir).clamp(0.0, end);
+        (p + dir * along - c).length() <= r + swell + softness * end
+    });
+    if subset.is_empty() {
+        return 1.0;
+    }
     let (mut t, mut lit) = (0.05, 1.0f32);
     for _ in 0..STEPS {
         let q = p + dir * t;
         if q.2 > front {
             break;
         }
-        let d = model.field(subset, q).0;
+        let d = model.field(&subset, q).0;
         if d < SURFACE {
             return 0.0;
         }
@@ -90,14 +104,24 @@ fn tone((lit_tone, shaded): (Color, Color), n: V, occluded: f32, visible: impl F
 struct Reach {
     near: Vec<u16>,
     wide: Vec<u16>,
-    /// Depth span of the near solids, and the front of every solid.
+    /// Depth span of the near solids, the front of every solid, and the
+    /// widest melt, which can swell a body past the bounds of its solids.
     depth: (f32, f32),
     front: f32,
+    swell: f32,
 }
 
-/// Premultiplied sRGB color of the ray through (`x`, `y`); `pixel` is the
-/// sample's width in design units.
-fn trace(colors: &Palette, model: &Model, reach: &Reach, (x, y): (f32, f32), pixel: f32) -> [f32; 4] {
+/// Premultiplied sRGB color of the ray through (`x`, `y`), and whether it
+/// lands partway across an ink edge; `pixel` is the sample's width in design
+/// units. Unshaded, surfaces are flat ink.
+fn trace(
+    colors: &Palette,
+    model: &Model,
+    reach: &Reach,
+    (x, y): (f32, f32),
+    pixel: f32,
+    shaded: bool,
+) -> ([f32; 4], bool) {
     let (subset, (back, front), ink) = (&reach.near[..], reach.depth, colors["ink"]);
     let cover = |distance: f32| (0.5 - distance / pixel).clamp(0.0, 1.0);
     let mut z = front;
@@ -109,6 +133,9 @@ fn trace(colors: &Palette, model: &Model, reach: &Reach, (x, y): (f32, f32), pix
         let (d, index) = model.field(subset, p);
         near = near.min(d);
         if d < SURFACE {
+            if !shaded {
+                return ([encode(ink[0]), encode(ink[1]), encode(ink[2]), 1.0], false);
+            }
             let solid = &model.solids[index];
             let seam = subset
                 .iter()
@@ -119,10 +146,10 @@ fn trace(colors: &Palette, model: &Model, reach: &Reach, (x, y): (f32, f32), pix
             let line = cover(graze - INK).max(cover(seam - SEAM));
             let n = model.normal(subset, p);
             let start = p + n * (4.0 * SURFACE);
-            let visible = || visibility(model, &reach.wide, start, light(), reach.front, CAST) > 0.5;
+            let visible = || visibility(model, &reach.wide, start, light(), (reach.front, reach.swell), CAST) > 0.5;
             let color = tone(model.tones(subset, index, p), n, occlusion(model, subset, p, n), visible);
             let [r, g, b] = std::array::from_fn(|i| encode(lerp(color[i], ink[i], line)));
-            return [r, g, b, 1.0];
+            return ([r, g, b, 1.0], line > 0.0 && line < 1.0);
         }
         if d < low {
             low = d;
@@ -137,10 +164,10 @@ fn trace(colors: &Palette, model: &Model, reach: &Reach, (x, y): (f32, f32), pix
     }
     // Ink along the silhouette, over the shadow on the backdrop.
     let alpha = cover(near - INK);
-    let lit = visibility(model, &reach.wide, V(x, y, FLOOR), backlight(), reach.front, PENUMBRA);
+    let lit = visibility(model, &reach.wide, V(x, y, FLOOR), backlight(), (reach.front, reach.swell), PENUMBRA);
     let shade = SHADOW_OPACITY * (1.0 - lit) * (1.0 - alpha);
     let paint = |i: usize| encode(ink[i]) * alpha + encode(colors["shadow"][i]) * shade;
-    [paint(0), paint(1), paint(2), alpha + shade]
+    ([paint(0), paint(1), paint(2), alpha + shade], alpha > 0.0 && alpha < 1.0)
 }
 
 /// Samples per pixel along each axis at `scale` pixels per design unit.
@@ -152,7 +179,7 @@ fn samples(scale: f32) -> usize {
     }
 }
 
-fn raster(colors: &Palette, model: &Model, pixmap: &mut Pixmap, transform: Transform) {
+fn raster(colors: &Palette, model: &Model, pixmap: &mut Pixmap, transform: Transform, shaded: bool) {
     let (scale, tx, ty) = (transform.sx, transform.tx, transform.ty);
     let (width, height) = (pixmap.width() as usize, pixmap.height() as usize);
     let bounds: Vec<(V, f32)> = model.solids.iter().map(Solid::bound).collect();
@@ -160,11 +187,11 @@ fn raster(colors: &Palette, model: &Model, pixmap: &mut Pixmap, transform: Trans
     let (back, front) = bounds
         .iter()
         .fold((f32::INFINITY, f32::NEG_INFINITY), |(back, front), &(c, r)| (back.min(c.2 - r), front.max(c.2 + r)));
+    let swell = model.solids.iter().map(|s| s.melt).fold(0.0, f32::max);
     // How far across the screen a light ray drifts while rising by `rise`.
     let drift = |dir: V, rise: f32| (dir.0 / dir.2 * rise, dir.1 / dir.2 * rise);
     let drifts = [drift(light(), front - back), drift(backlight(), front - FLOOR)];
-    let n = samples(scale);
-    let data = pixmap.data_mut();
+    let mut tiles = Vec::new();
     for top in (0..height).step_by(TILE) {
         for left in (0..width).step_by(TILE) {
             let unit = |p: usize, offset: f32| (p as f32 - offset) / scale;
@@ -181,33 +208,59 @@ fn raster(colors: &Palette, model: &Model, pixmap: &mut Pixmap, transform: Trans
                 let (c, r) = bounds[i as usize];
                 (back.min(c.2 - r - reach), front.max(c.2 + r + reach))
             });
-            let tile = Reach { near, wide, depth, front };
-            for py in top..(top + TILE).min(height) {
-                for px in left..(left + TILE).min(width) {
-                    let mut sum = [0.0f32; 4];
-                    for s in 0..n * n {
-                        let at =
-                            |p: usize, k: usize, offset: f32| (p as f32 + (k as f32 + 0.5) / n as f32 - offset) / scale;
+            tiles.push((left, top, Reach { near, wide, depth, front, swell }));
+        }
+    }
+    let pixels = |&(left, top, _): &(usize, usize, Reach)| {
+        (top..(top + TILE).min(height)).flat_map(move |py| (left..(left + TILE).min(width)).map(move |px| (px, py)))
+    };
+    // One sample at each pixel's center, a pixel wide.
+    let mut centers = vec![([0.0f32; 4], false); width * height];
+    for tile in &tiles {
+        for (px, py) in pixels(tile) {
+            let point = ((px as f32 + 0.5 - tx) / scale, (py as f32 + 0.5 - ty) / scale);
+            centers[py * width + px] = trace(colors, model, &tile.2, point, 1.0 / scale, shaded);
+        }
+    }
+    let rough = |px: usize, py: usize| {
+        let (color, edge) = centers[py * width + px];
+        let differs = |x: usize, y: usize| {
+            let other = centers[y * width + x].0;
+            color.iter().zip(other).any(|(a, b)| (a - b).abs() > SMOOTH)
+        };
+        let (xs, ys) = (px.saturating_sub(1)..(px + 2).min(width), py.saturating_sub(1)..(py + 2).min(height));
+        edge || ys.flat_map(|y| xs.clone().map(move |x| (x, y))).any(|(x, y)| differs(x, y))
+    };
+    let n = samples(scale);
+    let data = pixmap.data_mut();
+    for tile in &tiles {
+        for (px, py) in pixels(tile) {
+            let color = match n > 1 && rough(px, py) {
+                false => centers[py * width + px].0,
+                true => {
+                    let at =
+                        |p: usize, k: usize, offset: f32| (p as f32 + (k as f32 + 0.5) / n as f32 - offset) / scale;
+                    let sum = (0..n * n).fold([0.0f32; 4], |sum, s| {
                         let point = (at(px, s % n, tx), at(py, s / n, ty));
-                        let color = trace(colors, model, &tile, point, 1.0 / (scale * n as f32));
-                        for (total, c) in sum.iter_mut().zip(color) {
-                            *total += c;
-                        }
-                    }
-                    let pixel = &mut data[(py * width + px) * 4..][..4];
-                    for (channel, value) in pixel.iter_mut().zip(sum) {
-                        *channel = (value / (n * n) as f32 * 255.0).round().clamp(0.0, 255.0) as u8;
-                    }
+                        let color = trace(colors, model, &tile.2, point, 1.0 / (scale * n as f32), shaded).0;
+                        std::array::from_fn(|i| sum[i] + color[i])
+                    });
+                    sum.map(|value| value / (n * n) as f32)
                 }
+            };
+            let pixel = &mut data[(py * width + px) * 4..][..4];
+            for (channel, value) in pixel.iter_mut().zip(color) {
+                *channel = (value * 255.0).round().clamp(0.0, 255.0) as u8;
             }
         }
     }
 }
 
-pub fn draw(colors: &Palette, scene: &Scene, pixmap: &mut Pixmap, transform: Transform) {
+/// Draws `scene`, or only its coverage unless `shaded`.
+pub fn draw(colors: &Palette, scene: &Scene, pixmap: &mut Pixmap, transform: Transform, shaded: bool) {
     let render = |scene: &Scene| {
         let mut image = Pixmap::new(pixmap.width(), pixmap.height()).expect("nonzero size");
-        raster(colors, &model(colors, scene), &mut image, transform);
+        raster(colors, &model(colors, scene), &mut image, transform, shaded);
         image
     };
     let mut image = render(scene);

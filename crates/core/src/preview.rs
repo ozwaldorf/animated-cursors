@@ -11,7 +11,7 @@ use tiny_skia::{Pixmap, PixmapPaint, Transform};
 use crate::palette::Palette;
 use crate::shape::Shape;
 use crate::theme::{
-    Alias, Fitted, Look, Sequence, Theme, cursor_sequence, fitted, look, parallel, pixmaps, transition_sequence,
+    Alias, Fitted, Look, Sequence, Theme, cursor_sequences, fitted, look, parallel, pixmaps, transition_sequences,
 };
 
 /// Nominal size of sheet cells, and of the tour.
@@ -22,6 +22,8 @@ const STEP: u32 = 2;
 const HOLD: u32 = 40;
 /// Shortest idle stop on the tour; it then plays on until back at rest.
 const STOP: u32 = 150;
+/// GIF frames drawn and encoded together, bounding the memory they hold.
+const CHUNK: usize = 96;
 /// Sheet columns.
 const COLUMNS: u32 = 5;
 /// Cursors shown in each palette, one row per palette.
@@ -117,12 +119,17 @@ pub fn previews<T: Theme>(theme: &T, directory: &Path, aliases: &[Alias]) -> io:
         }
     }
 
-    let clips = parallel(transitions, |sequence| {
-        let last = sequence.frames.len() - 1;
-        let hold = |index: usize, end: usize| if index == end { HOLD } else { STEP };
-        let steps = (0..=last).map(|i| (i, hold(i, last))).chain((0..=last).rev().map(|i| (i, hold(i, 0))));
-        Clip::new(pixmaps(theme, sequence, *fit, SIZE), steps)
-    });
+    let jobs: Vec<(&T, &Sequence<T::Scene>)> = transitions.iter().map(|sequence| (theme, sequence)).collect();
+    let clips: Vec<Clip> = pixmaps(&jobs, *fit, SIZE)
+        .into_iter()
+        .zip(transitions)
+        .map(|(images, sequence)| {
+            let last = sequence.frames.len() - 1;
+            let hold = |index: usize, end: usize| if index == end { HOLD } else { STEP };
+            let steps = (0..=last).map(|i| (i, hold(i, last))).chain((0..=last).rev().map(|i| (i, hold(i, 0))));
+            Clip::new(images, steps)
+        })
+        .collect();
     compose(&clips, COLUMNS, SIZE * 3 / 2, &directory.join("transitions.gif"))?;
 
     let idle_looks: Vec<Look> = Shape::ALL
@@ -130,23 +137,36 @@ pub fn previews<T: Theme>(theme: &T, directory: &Path, aliases: &[Alias]) -> io:
         .map(|shape| look(shape, aliases))
         .chain(T::GESTURES.iter().map(|&name| Look::Gesture(name)))
         .collect();
-    let loops = parallel(&idle_looks, |&look| {
-        let images = pixmaps(theme, &cursors[&look], *fit, SIZE);
-        let steps = idle(&images, &cursors[&look], 1, true);
-        (look, images, steps)
-    });
+    let jobs: Vec<(&T, &Sequence<T::Scene>)> = idle_looks.iter().map(|look| (theme, &cursors[look])).collect();
+    let loops = idle_looks
+        .iter()
+        .zip(pixmaps(&jobs, *fit, SIZE))
+        .map(|(&look, images)| {
+            let steps = idle(&images, &cursors[&look], 1, true);
+            (look, images, steps)
+        })
+        .collect();
     compose(&synchronized(loops), COLUMNS, SIZE * 3 / 2, &directory.join("idle.gif"))?;
 
     // One gesture each, so long shuffled loops stay short.
-    let swatches: Vec<(&str, Look)> =
-        T::PALETTES.iter().flat_map(|&(name, _)| SWATCHES.map(|shape| (name, look(shape, aliases)))).collect();
-    let loops = parallel(&swatches, |&(name, look)| {
-        let theme = T::new(Palette::load::<T>(name).expect("bundled palettes parse"));
-        let sequence = cursor_sequence(&theme, look);
-        let images = pixmaps(&theme, &sequence, *fit, SIZE);
-        let steps = idle(&images, &sequence, 1, false);
-        (look, images, steps)
-    });
+    let themes: Vec<T> = T::PALETTES
+        .iter()
+        .map(|&(name, _)| T::new(Palette::load::<T>(name).expect("bundled palettes parse")))
+        .collect();
+    let swatches: Vec<(&T, Look)> =
+        themes.iter().flat_map(|theme| SWATCHES.map(|shape| (theme, look(shape, aliases)))).collect();
+    let sequences = cursor_sequences(&swatches);
+    let jobs: Vec<(&T, &Sequence<T::Scene>)> =
+        swatches.iter().zip(&sequences).map(|(&(theme, _), sequence)| (theme, sequence)).collect();
+    let loops = swatches
+        .iter()
+        .zip(&sequences)
+        .zip(pixmaps(&jobs, *fit, SIZE))
+        .map(|((&(_, look), sequence), images)| {
+            let steps = idle(&images, sequence, 1, false);
+            (look, images, steps)
+        })
+        .collect();
     compose(&synchronized(loops), SWATCHES.len() as u32, SIZE * 3 / 2, &directory.join("palettes.gif"))
 }
 
@@ -155,17 +175,27 @@ pub fn previews<T: Theme>(theme: &T, directory: &Path, aliases: &[Alias]) -> io:
 fn tour<T: Theme>(theme: &T, stops: &[Look], fitted: &Fitted<T::Scene>, path: &Path) -> io::Result<()> {
     let Fitted { cursors, pairs, transitions, fit } = fitted;
     let legs: Vec<(Look, Look)> = stops.iter().zip(stops.iter().cycle().skip(1)).map(|(&a, &b)| (a, b)).collect();
-    let moves = parallel(&legs, |&(from, to)| match between(pairs, from, to) {
-        Some((index, reversed)) => {
-            let mut images = pixmaps(theme, &transitions[index], *fit, TOUR_SIZE);
-            if reversed {
-                images.reverse();
-            }
-            images
+    let found: Vec<Option<(usize, bool)>> = legs.iter().map(|&(from, to)| between(pairs, from, to)).collect();
+    let missing: Vec<(Look, Look)> =
+        legs.iter().zip(&found).filter(|(_, found)| found.is_none()).map(|(&leg, _)| leg).collect();
+    let extra = transition_sequences(theme, &missing, cursors);
+    let mut extra = extra.iter();
+    let jobs: Vec<(&T, &Sequence<T::Scene>)> = found
+        .iter()
+        .map(|found| match found {
+            Some((index, _)) => (theme, &transitions[*index]),
+            None => (theme, extra.next().expect("missing leg")),
+        })
+        .chain(stops.iter().map(|look| (theme, &cursors[look])))
+        .collect();
+    let mut moves = pixmaps(&jobs, *fit, TOUR_SIZE);
+    let visits = moves.split_off(legs.len());
+    let moves = moves.into_iter().zip(&found).map(|(mut images, found)| {
+        if matches!(found, Some((_, true))) {
+            images.reverse();
         }
-        None => pixmaps(theme, &transition_sequence(theme, (from, to), cursors), *fit, TOUR_SIZE),
+        images
     });
-    let visits = parallel(stops, |look| pixmaps(theme, &cursors[look], *fit, TOUR_SIZE));
     let (mut images, mut steps) = (Images::new(), Vec::new());
     for (n, (look, (stop, leg))) in stops.iter().zip(visits.into_iter().zip(moves)).enumerate() {
         let offset = images.len();
@@ -239,7 +269,9 @@ fn compose(clips: &[Clip], columns: u32, side: u32, path: &Path) -> io::Result<(
         kept
     });
     let rows = (clips.len() as u32).div_ceil(columns);
-    let frames = times.iter().zip(times.iter().skip(1).chain([&length])).map(|(&time, &next)| {
+    let spans: Vec<(u32, u32)> = times.iter().copied().zip(times.iter().skip(1).copied().chain([length])).collect();
+    gif(path, (side * columns, side * rows), spans.len(), |frame| {
+        let (time, next) = spans[frame];
         let mut canvas = Pixmap::new(side * columns, side * rows).expect("nonzero size");
         for (cell, (clip, origins)) in clips.iter().zip(&origins).enumerate() {
             let index = clip.starts.iter().take_while(|(start, _)| *start <= time).last().map_or(0, |&(_, i)| i);
@@ -250,18 +282,25 @@ fn compose(clips: &[Clip], columns: u32, side: u32, path: &Path) -> io::Result<(
             canvas.draw_pixmap(x as i32, y as i32, tile.as_ref(), &PixmapPaint::default(), Transform::identity(), None);
         }
         (canvas, (next - time) as u16)
-    });
-    gif(path, frames)
+    })
 }
 
 /// Pixel box as (left, top, right, bottom), inclusive.
 type Area = (usize, usize, usize, usize);
 
-/// Writes frames as a looping GIF over a neutral grey; delays are in
-/// hundredths of a second. Each frame after the first stores only the box
-/// that changed, and frames that change nothing extend the previous one.
-fn gif(path: &Path, frames: impl IntoIterator<Item = (Pixmap, u16)>) -> io::Result<()> {
+/// Writes `count` frames of `size` as a looping GIF over a neutral grey;
+/// delays are in hundredths of a second. Each frame after the first stores
+/// only the box that changed, and frames that change nothing extend the
+/// previous one. Frames are drawn, compared and encoded in parallel a chunk
+/// at a time.
+fn gif(
+    path: &Path,
+    (width, height): (u32, u32),
+    count: usize,
+    frame: impl Fn(usize) -> (Pixmap, u16) + Sync,
+) -> io::Result<()> {
     const BACKGROUND: [u8; 3] = [0x55, 0x55, 0x55];
+    let (width, height) = (width as usize, height as usize);
     let flatten = |pixmap: &Pixmap| -> Vec<u8> {
         pixmap
             .pixels()
@@ -273,9 +312,6 @@ fn gif(path: &Path, frames: impl IntoIterator<Item = (Pixmap, u16)>) -> io::Resu
             })
             .collect()
     };
-    let mut frames = frames.into_iter().peekable();
-    let (width, height) =
-        frames.peek().map_or((1, 1), |(pixmap, _)| (pixmap.width() as usize, pixmap.height() as usize));
     let changed = |a: &[u8], b: &[u8]| -> Option<Area> {
         (0..width * height).filter(|&i| a[3 * i..3 * i + 3] != b[3 * i..3 * i + 3]).fold(None, |area, i| {
             let (x, y) = (i % width, i / width);
@@ -283,35 +319,46 @@ fn gif(path: &Path, frames: impl IntoIterator<Item = (Pixmap, u16)>) -> io::Resu
             Some((l.min(x), t.min(y), r.max(x), b.max(y)))
         })
     };
+    let encode = |(rgb, (l, t, r, b), delay): &(Vec<u8>, Area, u16)| {
+        let mut frame = gif::Frame::from_rgb_speed((r - l + 1) as u16, (b - t + 1) as u16, rgb, 10);
+        (frame.left, frame.top, frame.delay) = (*l as u16, *t as u16, *delay);
+        frame
+    };
     let mut encoder =
         gif::Encoder::new(File::create(path)?, width as u16, height as u16, &[]).map_err(io::Error::other)?;
     encoder.set_repeat(gif::Repeat::Infinite).map_err(io::Error::other)?;
-    let mut write = |(rgb, (l, t, r, b), delay): (Vec<u8>, Area, u16)| {
-        let mut frame = gif::Frame::from_rgb_speed((r - l + 1) as u16, (b - t + 1) as u16, &rgb, 10);
-        (frame.left, frame.top, frame.delay) = (l as u16, t as u16, delay);
-        encoder.write_frame(&frame).map_err(io::Error::other)
-    };
     let mut pending: Option<(Vec<u8>, Area, u16)> = None;
     let mut previous: Option<Vec<u8>> = None;
-    for (pixmap, delay) in frames {
-        let rgb = flatten(&pixmap);
-        let area = match &previous {
-            None => Some((0, 0, width - 1, height - 1)),
-            Some(last) => changed(last, &rgb),
-        };
-        match (area, &mut pending) {
-            (None, Some(last)) => last.2 += delay,
-            (area, _) => {
-                let (l, t, r, b) = area.unwrap_or((0, 0, 0, 0));
-                let crop = (t..=b).flat_map(|y| rgb[3 * (y * width + l)..3 * (y * width + r + 1)].to_vec()).collect();
-                if let Some(done) = pending.replace((crop, (l, t, r, b), delay)) {
-                    write(done)?;
+    let indices: Vec<usize> = (0..count).collect();
+    for chunk in indices.chunks(CHUNK) {
+        let drawn = parallel(chunk, |&index| {
+            let (pixmap, delay) = frame(index);
+            (flatten(&pixmap), delay)
+        });
+        // An unchanged frame matches the last one kept, so each frame need
+        // only be compared with the one before it.
+        let areas = parallel(&(0..drawn.len()).collect::<Vec<_>>(), |&k| match k {
+            0 => previous.as_ref().map_or(Some((0, 0, width - 1, height - 1)), |last| changed(last, &drawn[0].0)),
+            _ => changed(&drawn[k - 1].0, &drawn[k].0),
+        });
+        let mut done = Vec::new();
+        for ((rgb, delay), area) in drawn.into_iter().zip(areas) {
+            match (area, &mut pending) {
+                (None, Some(last)) => last.2 += delay,
+                (area, _) => {
+                    let (l, t, r, b) = area.unwrap_or((0, 0, 0, 0));
+                    let crop =
+                        (t..=b).flat_map(|y| rgb[3 * (y * width + l)..3 * (y * width + r + 1)].to_vec()).collect();
+                    done.extend(pending.replace((crop, (l, t, r, b), delay)));
                 }
-                previous = Some(rgb);
             }
+            previous = Some(rgb);
+        }
+        for frame in parallel(&done, encode) {
+            encoder.write_frame(&frame).map_err(io::Error::other)?;
         }
     }
-    pending.map_or(Ok(()), write)
+    pending.map_or(Ok(()), |last| encoder.write_frame(&encode(&last)).map_err(io::Error::other))
 }
 
 #[cfg(test)]

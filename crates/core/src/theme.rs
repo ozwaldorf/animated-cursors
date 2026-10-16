@@ -178,6 +178,11 @@ pub trait Theme: Sync {
 
     /// Draws a scene in design units with the hotspot at the origin.
     fn draw(&self, scene: &Self::Scene, pixmap: &mut Pixmap, transform: Transform);
+
+    /// As `draw`, where only the coverage counts, so themes may skip shading.
+    fn silhouette(&self, scene: &Self::Scene, pixmap: &mut Pixmap, transform: Transform) {
+        self.draw(scene, pixmap, transform);
+    }
 }
 
 /// Frames of a look, as `Theme::cursor`.
@@ -232,7 +237,7 @@ pub fn measure<T: Theme>(theme: &T, scene: &T::Scene) -> Bounds {
     let side = (2.0 * REACH * PROBE) as usize;
     let center = side as f32 / 2.0;
     let mut pixmap = Pixmap::new(side as u32, side as u32).expect("nonzero size");
-    theme.draw(scene, &mut pixmap, Transform::from_row(PROBE, 0.0, 0.0, PROBE, center, center));
+    theme.silhouette(scene, &mut pixmap, Transform::from_row(PROBE, 0.0, 0.0, PROBE, center, center));
     let unit = |pixel: usize| (pixel as f32 - center) / PROBE;
     pixmap.pixels().iter().enumerate().filter(|(_, pixel)| pixel.alpha() > PAINTED).fold(
         Bounds::EMPTY,
@@ -272,37 +277,62 @@ impl Fit {
     }
 }
 
-/// Every frame of a cursor shares one hotspot, centered on all of them.
-pub fn cursor_sequence<T: Theme>(theme: &T, look: Look) -> Sequence<T::Scene> {
-    let frames = frames(theme, look);
-    let union = frames.iter().fold(Bounds::EMPTY, |bounds, frame| bounds.union(measure(theme, &frame.scene)));
-    Sequence { bounds: vec![union; frames.len()], frames, order: order(theme, look) }
+/// Each cursor's sequence, drawn by its theme: every frame of a cursor shares
+/// one hotspot, centered on all of them. Each frame is measured as its own
+/// job, so long loops spread across threads.
+pub fn cursor_sequences<T: Theme>(jobs: &[(&T, Look)]) -> Vec<Sequence<T::Scene>> {
+    let mut sequences = parallel(jobs, |&(theme, look)| frames(theme, look));
+    let frames: Vec<(usize, usize)> =
+        sequences.iter().enumerate().flat_map(|(i, frames)| (0..frames.len()).map(move |j| (i, j))).collect();
+    let mut bounds = parallel(&frames, |&(i, j)| measure(jobs[i].0, &sequences[i][j].scene)).into_iter();
+    jobs.iter()
+        .zip(sequences.iter_mut())
+        .map(|(&(theme, look), frames)| {
+            let union = bounds.by_ref().take(frames.len()).fold(Bounds::EMPTY, Bounds::union);
+            let frames = std::mem::take(frames);
+            Sequence { bounds: vec![union; frames.len()], frames, order: order(theme, look) }
+        })
+        .collect()
 }
 
-/// Endpoints are the cursors' first frames with their hotspots, so they match
-/// the ordinary cursors exactly; frames between center themselves.
-pub fn transition_sequence<T: Theme>(
+/// The transition between each pair. Endpoints are the cursors' first frames
+/// with their hotspots, so they match the ordinary cursors exactly; frames
+/// between center themselves. Each frame is its own job.
+pub fn transition_sequences<T: Theme>(
+    theme: &T,
+    pairs: &[(Look, Look)],
+    cursors: &Cursors<T::Scene>,
+) -> Vec<Sequence<T::Scene>> {
+    let jobs: Vec<(usize, usize)> =
+        (0..pairs.len()).flat_map(|i| (0..TRANSITION_FRAMES).map(move |j| (i, j))).collect();
+    let mut steps = parallel(&jobs, |&(i, j)| transition_frame(theme, pairs[i], cursors, j)).into_iter();
+    (0..pairs.len())
+        .map(|_| {
+            let (frames, bounds) = steps.by_ref().take(TRANSITION_FRAMES).unzip();
+            Sequence { frames, bounds, order: (0..TRANSITION_FRAMES).collect() }
+        })
+        .collect()
+}
+
+/// Frame `index` of a transition with the bounds its hotspot centers.
+fn transition_frame<T: Theme>(
     theme: &T,
     (from, to): (Look, Look),
     cursors: &Cursors<T::Scene>,
-) -> Sequence<T::Scene> {
+    index: usize,
+) -> (Frame<T::Scene>, Bounds) {
     let last = TRANSITION_FRAMES - 1;
     let first = |look: Look| frames(theme, look).into_iter().next().expect("cursor has frames").scene;
-    let (frames, bounds) = (0..TRANSITION_FRAMES)
-        .map(|index| {
-            let (scene, bounds) = match index {
-                0 => (first(from), cursors[&from].bounds[0]),
-                _ if index == last => (first(to), cursors[&to].bounds[0]),
-                _ => {
-                    let scene = theme.morph(from, to, index as f32 / last as f32);
-                    let bounds = measure(theme, &scene);
-                    (scene, bounds)
-                }
-            };
-            (Frame { scene, delay: TRANSITION_DELAY }, bounds)
-        })
-        .unzip();
-    Sequence { frames, bounds, order: (0..TRANSITION_FRAMES).collect() }
+    let (scene, bounds) = match index {
+        0 => (first(from), cursors[&from].bounds[0]),
+        _ if index == last => (first(to), cursors[&to].bounds[0]),
+        _ => {
+            let scene = theme.morph(from, to, index as f32 / last as f32);
+            let bounds = measure(theme, &scene);
+            (scene, bounds)
+        }
+    };
+    (Frame { scene, delay: TRANSITION_DELAY }, bounds)
 }
 
 /// Renders a scene on a `size` square at `scale` pixels per design unit, with
@@ -314,38 +344,42 @@ pub fn render<T: Theme>(theme: &T, scene: &T::Scene, scale: f32, size: u32, hots
     pixmap
 }
 
-pub(crate) fn pixmaps<T: Theme>(
+/// Frame `index` of a sequence at nominal `size`, with its hotspot.
+fn pixmap<T: Theme>(
     theme: &T,
     sequence: &Sequence<T::Scene>,
     fit: Fit,
     size: u32,
-) -> Vec<(Pixmap, (u32, u32))> {
-    let scale = fit.scale(size);
-    sequence
-        .frames
+    index: usize,
+) -> (Pixmap, (u32, u32)) {
+    let hotspot = fit.hotspot(&sequence.bounds[index], size);
+    (render(theme, &sequence.frames[index].scene, fit.scale(size), size, hotspot), hotspot)
+}
+
+/// Every frame of each sequence, drawn by its theme at nominal `size` with
+/// its hotspot. Each frame is its own job.
+pub(crate) fn pixmaps<T: Theme>(
+    jobs: &[(&T, &Sequence<T::Scene>)],
+    fit: Fit,
+    size: u32,
+) -> Vec<Vec<(Pixmap, (u32, u32))>> {
+    let frames: Vec<(usize, usize)> = jobs
         .iter()
-        .zip(&sequence.bounds)
-        .map(|(frame, bounds)| {
-            let hotspot = fit.hotspot(bounds, size);
-            (render(theme, &frame.scene, scale, size, hotspot), hotspot)
-        })
-        .collect()
+        .enumerate()
+        .flat_map(|(i, (_, sequence))| (0..sequence.frames.len()).map(move |j| (i, j)))
+        .collect();
+    let mut drawn = parallel(&frames, |&(i, j)| pixmap(jobs[i].0, jobs[i].1, fit, size, j)).into_iter();
+    jobs.iter().map(|(_, sequence)| drawn.by_ref().take(sequence.frames.len()).collect()).collect()
+}
+
+/// Frame `index` of a sequence as an Xcursor image at nominal `size`.
+pub fn image<T: Theme>(theme: &T, sequence: &Sequence<T::Scene>, fit: Fit, size: u32, index: usize) -> Image {
+    let (pixmap, (xhot, yhot)) = pixmap(theme, sequence, fit, size, index);
+    Image { size, width: size, height: size, xhot, yhot, delay: sequence.frames[index].delay, pixels: argb(&pixmap) }
 }
 
 pub fn images<T: Theme>(theme: &T, sequence: &Sequence<T::Scene>, fit: Fit, size: u32) -> Vec<Image> {
-    pixmaps(theme, sequence, fit, size)
-        .into_iter()
-        .zip(&sequence.frames)
-        .map(|((pixmap, (xhot, yhot)), frame)| Image {
-            size,
-            width: size,
-            height: size,
-            xhot,
-            yhot,
-            delay: frame.delay,
-            pixels: argb(&pixmap),
-        })
-        .collect()
+    (0..sequence.frames.len()).map(|index| image(theme, sequence, fit, size, index)).collect()
 }
 
 /// Every name for a transition, canonical first.
@@ -412,12 +446,13 @@ pub struct Fitted<S> {
     pub fit: Fit,
 }
 
+/// Every cursor and transition, with the one scale that fits them all.
 pub fn fitted<T: Theme>(theme: &T, aliases: &[Alias]) -> Fitted<T::Scene> {
     let looks = looks::<T>(aliases);
-    let cursors: Cursors<T::Scene> =
-        looks.iter().copied().zip(parallel(&looks, |look| cursor_sequence(theme, *look))).collect();
+    let jobs: Vec<(&T, Look)> = looks.iter().map(|&look| (theme, look)).collect();
+    let cursors: Cursors<T::Scene> = looks.into_iter().zip(cursor_sequences(&jobs)).collect();
     let pairs: Vec<(Look, Look)> = PAIRS.iter().map(|&(a, b)| (look(a, aliases), look(b, aliases))).collect();
-    let transitions = parallel(&pairs, |pair| transition_sequence(theme, *pair, &cursors));
+    let transitions = transition_sequences(theme, &pairs, &cursors);
     let extent = cursors.values().chain(&transitions).flat_map(|s| &s.bounds).map(Bounds::extent).fold(0.0, f32::max);
     Fitted { cursors, pairs, transitions, fit: Fit { extent } }
 }
@@ -433,13 +468,27 @@ pub fn generate<T: Theme>(theme: &T, output: &Path, sizes: &[u32], aliases: &[Al
         .map(|(look, sequence)| (look.name().to_owned(), sequence))
         .chain(PAIRS.into_iter().zip(&transitions).map(|((a, b), s)| (format!("{}-to-{}", a.name(), b.name()), s)))
         .collect();
-    parallel(&jobs, |(name, sequence)| {
-        let images: Vec<Image> = sizes.iter().flat_map(|&size| images(theme, sequence, fit, size)).collect();
+    // Every image is its own job, so long loops spread across threads.
+    let renders: Vec<(usize, u32, usize)> = jobs
+        .iter()
+        .enumerate()
+        .flat_map(|(i, (_, sequence))| {
+            sizes.iter().flat_map(move |&size| (0..sequence.frames.len()).map(move |j| (i, size, j)))
+        })
+        .collect();
+    let mut rendered = parallel(&renders, |&(i, size, j)| image(theme, jobs[i].1, fit, size, j)).into_iter();
+    let files: Vec<(&String, _, Vec<Image>)> = jobs
+        .iter()
+        .map(|(name, sequence)| {
+            (name, *sequence, rendered.by_ref().take(sizes.len() * sequence.frames.len()).collect())
+        })
+        .collect();
+    parallel(&files, |(name, sequence, images)| {
         // Each size plays the frames in order, repeats pointing at one image.
         let count = sequence.frames.len();
         let entries: Vec<usize> =
             (0..sizes.len()).flat_map(|block| sequence.order.iter().map(move |&i| block * count + i)).collect();
-        fs::write(directory.join(name), encode(&images, &entries))
+        fs::write(directory.join(name), encode(images, &entries))
     })
     .into_iter()
     .collect::<io::Result<()>>()?;

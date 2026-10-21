@@ -102,7 +102,7 @@ impl Shape {
     }
 }
 
-pub const PAIRS: [(Shape, Shape); 27] = [
+pub const PAIRS: [(Shape, Shape); 28] = [
     (Shape::Default, Shape::Pointer),
     (Shape::Default, Shape::Text),
     (Shape::Pointer, Shape::Text),
@@ -114,6 +114,7 @@ pub const PAIRS: [(Shape, Shape); 27] = [
     (Shape::Default, Shape::Grab),
     (Shape::Grab, Shape::Grabbing),
     (Shape::Default, Shape::Grabbing),
+    (Shape::Grab, Shape::Text),
     (Shape::Default, Shape::Progress),
     (Shape::Default, Shape::Wait),
     (Shape::Grabbing, Shape::Copy),

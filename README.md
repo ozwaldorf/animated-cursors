@@ -10,7 +10,13 @@ support it and plain animated cursors everywhere else.
 ## Compositor support
 
 Transitions need a compositor that plays them. See [`patches/`](patches/README.md)
-for the spec and a Niri patch.
+for the spec.
+
+| Compositor | Transitions |
+| --- | --- |
+| [Pleamar-wm](https://github.com/k4ditano/pleamar-wm) | Fully supported |
+| [Niri](https://github.com/YaLTeR/niri) | With [`patches/niri.patch`](patches/niri.patch) (`nix build .#niri`) |
+| Others | Idle animations only |
 
 ## Themes
 

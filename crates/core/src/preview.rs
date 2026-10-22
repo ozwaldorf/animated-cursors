@@ -2,11 +2,13 @@
 //! every transition and every idle loop, and a few cursors in every bundled
 //! palette.
 
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io;
 use std::path::Path;
 
-use tiny_skia::{Pixmap, PixmapPaint, Transform};
+use color_quant::NeuQuant;
+use tiny_skia::{Pixmap, PixmapPaint, PremultipliedColorU8, Transform};
 
 use crate::palette::Palette;
 use crate::shape::Shape;
@@ -24,6 +26,8 @@ const HOLD: u32 = 40;
 const STOP: u32 = 150;
 /// GIF frames drawn and encoded together, bounding the memory they hold.
 const CHUNK: usize = 96;
+/// GIF frames sampled to learn the palette.
+const SAMPLES: usize = 32;
 /// Sheet columns.
 const COLUMNS: u32 = 5;
 /// Cursors shown in each palette, one row per palette.
@@ -289,10 +293,11 @@ fn compose(clips: &[Clip], columns: u32, side: u32, path: &Path) -> io::Result<(
 type Area = (usize, usize, usize, usize);
 
 /// Writes `count` frames of `size` as a looping GIF over a neutral grey;
-/// delays are in hundredths of a second. Each frame after the first stores
-/// only the box that changed, and frames that change nothing extend the
-/// previous one. Frames are drawn, compared and encoded in parallel a chunk
-/// at a time.
+/// delays are in hundredths of a second. Every frame shares one palette
+/// learned from a sample of them. Each frame after the first stores only
+/// the box that changed, leaving pixels that did not change clear, and
+/// frames that change nothing extend the previous one. Frames are drawn,
+/// compared and encoded in parallel a chunk at a time.
 fn gif(
     path: &Path,
     (width, height): (u32, u32),
@@ -300,40 +305,58 @@ fn gif(
     frame: impl Fn(usize) -> (Pixmap, u16) + Sync,
 ) -> io::Result<()> {
     const BACKGROUND: [u8; 3] = [0x55, 0x55, 0x55];
+    const CLEAR: u8 = 255;
     let (width, height) = (width as usize, height as usize);
-    let flatten = |pixmap: &Pixmap| -> Vec<u8> {
-        pixmap
-            .pixels()
-            .iter()
-            .flat_map(|pixel| {
-                let alpha = 255 - pixel.alpha() as u16;
-                let channels = [pixel.red(), pixel.green(), pixel.blue()];
-                (0..3).map(move |c| (channels[c] as u16 + BACKGROUND[c] as u16 * alpha / 255) as u8)
-            })
-            .collect()
+    let flatten = |pixmap: &Pixmap| -> Vec<[u8; 4]> {
+        let channel = |value: u8, background: u8, alpha: u8| {
+            (value as u16 + background as u16 * (255 - alpha as u16) / 255) as u8
+        };
+        let blend = |pixel: &PremultipliedColorU8| {
+            let alpha = pixel.alpha();
+            let [r, g, b] = BACKGROUND;
+            [channel(pixel.red(), r, alpha), channel(pixel.green(), g, alpha), channel(pixel.blue(), b, alpha), 255]
+        };
+        pixmap.pixels().iter().map(blend).collect()
+    };
+    let samples: Vec<usize> = (0..count).step_by(count.div_ceil(SAMPLES)).collect();
+    let sampled = parallel(&samples, |&index| flatten(&frame(index).0)).concat();
+    let quantizer = NeuQuant::new(10, CLEAR as usize, sampled.as_flattened());
+    let palette = [quantizer.color_map_rgb(), BACKGROUND.to_vec()].concat();
+    let index = |pixels: Vec<[u8; 4]>| -> Vec<u8> {
+        let mut known = HashMap::new();
+        pixels.iter().map(|pixel| *known.entry(*pixel).or_insert_with(|| quantizer.index_of(pixel) as u8)).collect()
     };
     let changed = |a: &[u8], b: &[u8]| -> Option<Area> {
-        (0..width * height).filter(|&i| a[3 * i..3 * i + 3] != b[3 * i..3 * i + 3]).fold(None, |area, i| {
+        (0..width * height).filter(|&i| a[i] != b[i]).fold(None, |area, i| {
             let (x, y) = (i % width, i / width);
             let (l, t, r, b) = area.unwrap_or((x, y, x, y));
             Some((l.min(x), t.min(y), r.max(x), b.max(y)))
         })
     };
-    let encode = |(rgb, (l, t, r, b), delay): &(Vec<u8>, Area, u16)| {
-        let mut frame = gif::Frame::from_rgb_speed((r - l + 1) as u16, (b - t + 1) as u16, rgb, 10);
-        (frame.left, frame.top, frame.delay) = (*l as u16, *t as u16, *delay);
+    let encode = |(indices, (l, t, r, b), delay): &(Vec<u8>, Area, u16)| {
+        let mut frame = gif::Frame {
+            left: *l as u16,
+            top: *t as u16,
+            width: (r - l + 1) as u16,
+            height: (b - t + 1) as u16,
+            delay: *delay,
+            transparent: Some(CLEAR),
+            buffer: indices.clone().into(),
+            ..gif::Frame::default()
+        };
+        frame.make_lzw_pre_encoded();
         frame
     };
     let mut encoder =
-        gif::Encoder::new(File::create(path)?, width as u16, height as u16, &[]).map_err(io::Error::other)?;
+        gif::Encoder::new(File::create(path)?, width as u16, height as u16, &palette).map_err(io::Error::other)?;
     encoder.set_repeat(gif::Repeat::Infinite).map_err(io::Error::other)?;
     let mut pending: Option<(Vec<u8>, Area, u16)> = None;
     let mut previous: Option<Vec<u8>> = None;
     let indices: Vec<usize> = (0..count).collect();
     for chunk in indices.chunks(CHUNK) {
-        let drawn = parallel(chunk, |&index| {
-            let (pixmap, delay) = frame(index);
-            (flatten(&pixmap), delay)
+        let drawn = parallel(chunk, |&n| {
+            let (pixmap, delay) = frame(n);
+            (index(flatten(&pixmap)), delay)
         });
         // An unchanged frame matches the last one kept, so each frame need
         // only be compared with the one before it.
@@ -342,23 +365,26 @@ fn gif(
             _ => changed(&drawn[k - 1].0, &drawn[k].0),
         });
         let mut done = Vec::new();
-        for ((rgb, delay), area) in drawn.into_iter().zip(areas) {
+        for ((pixels, delay), area) in drawn.into_iter().zip(areas) {
             match (area, &mut pending) {
                 (None, Some(last)) => last.2 += delay,
                 (area, _) => {
                     let (l, t, r, b) = area.unwrap_or((0, 0, 0, 0));
-                    let crop =
-                        (t..=b).flat_map(|y| rgb[3 * (y * width + l)..3 * (y * width + r + 1)].to_vec()).collect();
+                    let shown = |i: usize| match &previous {
+                        Some(last) if last[i] == pixels[i] => CLEAR,
+                        _ => pixels[i],
+                    };
+                    let crop = (t..=b).flat_map(|y| (y * width + l..=y * width + r).map(shown)).collect();
                     done.extend(pending.replace((crop, (l, t, r, b), delay)));
                 }
             }
-            previous = Some(rgb);
+            previous = Some(pixels);
         }
         for frame in parallel(&done, encode) {
-            encoder.write_frame(&frame).map_err(io::Error::other)?;
+            encoder.write_lzw_pre_encoded_frame(&frame).map_err(io::Error::other)?;
         }
     }
-    pending.map_or(Ok(()), |last| encoder.write_frame(&encode(&last)).map_err(io::Error::other))
+    pending.map_or(Ok(()), |last| encoder.write_lzw_pre_encoded_frame(&encode(&last)).map_err(io::Error::other))
 }
 
 #[cfg(test)]

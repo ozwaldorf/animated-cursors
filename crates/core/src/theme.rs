@@ -18,7 +18,7 @@ use tiny_skia::{Pixmap, Transform};
 use crate::paint::argb;
 use crate::palette::Palette;
 use crate::shape::{LEGACY_ALIASES, PAIRS, Shape};
-use crate::xcursor::{Image, encode};
+use crate::xcursor::{Image, crop, encode};
 
 /// Nominal sizes built by default.
 pub const SIZES: [u32; 5] = [32, 48, 64, 72, 96];
@@ -480,7 +480,9 @@ pub fn generate<T: Theme>(theme: &T, output: &Path, sizes: &[u32], aliases: &[Al
     let files: Vec<(&String, _, Vec<Image>)> = jobs
         .iter()
         .map(|(name, sequence)| {
-            (name, *sequence, rendered.by_ref().take(sizes.len() * sequence.frames.len()).collect())
+            let mut images: Vec<Image> = rendered.by_ref().take(sizes.len() * sequence.frames.len()).collect();
+            images.chunks_mut(sequence.frames.len()).for_each(crop);
+            (name, *sequence, images)
         })
         .collect();
     parallel(&files, |(name, sequence, images)| {

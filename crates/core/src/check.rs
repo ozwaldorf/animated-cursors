@@ -20,14 +20,15 @@ fn read(cursors: &Path, name: &str) -> HashMap<u32, Vec<Image>> {
     sizes
 }
 
-/// Asserts the image is exactly its nominal size with the hotspot inside.
+/// Asserts the image fits its nominal size with the hotspot inside.
 fn assert_shape(image: &Image, context: &str) {
-    assert_eq!((image.width, image.height), (image.size, image.size), "{context} size");
+    assert!(image.width <= image.size && image.height <= image.size, "{context} size");
     assert!(image.xhot < image.width && image.yhot < image.height, "{context} hotspot");
 }
 
-/// Asserts that nothing but a shadow tail touches the canvas edge; shadows
-/// peak near alpha 90, borders and fills at 255.
+/// Asserts that nothing but a shadow tail touches the canvas edge, the only
+/// edge a crop leaves without a clear margin; shadows peak near alpha 90,
+/// borders and fills at 255.
 fn assert_unclipped(image: &Image, context: &str) {
     let (width, height) = (image.width as usize, image.height as usize);
     for (index, pixel) in image.pixels.iter().enumerate() {
@@ -35,6 +36,16 @@ fn assert_unclipped(image: &Image, context: &str) {
         let edge = x == 0 || y == 0 || x == width - 1 || y == height - 1;
         assert!(!edge || pixel >> 24 <= 48, "{context} is clipped at ({x}, {y})");
     }
+}
+
+/// Visible pixels by their offset from the hotspot.
+fn anchored(image: &Image) -> Vec<(i64, i64, u32)> {
+    let visible = image.pixels.iter().enumerate().filter(|(_, pixel)| *pixel >> 24 > 0);
+    let offset = |index: usize, pixel: u32| {
+        let (x, y) = ((index as u32 % image.width) as i64, (index as u32 / image.width) as i64);
+        (x - image.xhot as i64, y - image.yhot as i64, pixel)
+    };
+    visible.map(|(index, &pixel)| offset(index, pixel)).collect()
 }
 
 /// Longest side of the painted area, in pixels.
@@ -122,8 +133,7 @@ fn checked<T: Theme>(theme: &T, output: &Path, aliases: &[Alias]) {
             }
             for (endpoint, shape) in [(&frames[0], a), (&frames[TRANSITION_FRAMES - 1], b)] {
                 let cursor = &looks[&look(shape, aliases)][&size][0];
-                assert_eq!((endpoint.xhot, endpoint.yhot), (cursor.xhot, cursor.yhot), "{context} endpoint hotspot");
-                assert!(endpoint.pixels == cursor.pixels, "{context} endpoint differs from {shape:?}");
+                assert!(anchored(endpoint) == anchored(cursor), "{context} endpoint differs from {shape:?}");
             }
         }
     }

@@ -21,7 +21,8 @@ Everything else keeps working as before.
   delay.
 - Frame 0 matches `a` and the last frame matches `b`, so a transition can
   start and end without a jump. Frames carry their own hotspots, which change
-  during a transition.
+  during a transition. Images of one size in a file share their dimensions,
+  which can be smaller than the nominal size.
 - No file for a pair means no transition: switch shapes immediately.
 
 ### State

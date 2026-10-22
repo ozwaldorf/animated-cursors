@@ -39,6 +39,28 @@ pub fn encode(images: &[Image], entries: &[usize]) -> Vec<u8> {
         .collect()
 }
 
+/// Crops images of one width and height to the box around every hotspot and
+/// visible pixel among them, keeping a transparent margin of a pixel where
+/// the canvas has room, so they keep one shared shape.
+pub fn crop(images: &mut [Image]) {
+    let Some(first) = images.first() else { return };
+    let (width, height) = (first.width, first.height);
+    let points = images.iter().flat_map(|image| {
+        let visible = image.pixels.iter().enumerate().filter(|(_, pixel)| *pixel >> 24 > 0);
+        visible.map(|(i, _)| (i as u32 % width, i as u32 / width)).chain([(image.xhot, image.yhot)])
+    });
+    let (x0, y0, x1, y1) = points
+        .fold((u32::MAX, u32::MAX, 0, 0), |(x0, y0, x1, y1), (x, y)| (x0.min(x), y0.min(y), x1.max(x), y1.max(y)));
+    let (x0, y0, x1, y1) =
+        (x0.saturating_sub(1), y0.saturating_sub(1), (x1 + 1).min(width - 1), (y1 + 1).min(height - 1));
+    for image in images {
+        let row = |y: u32| &image.pixels[(y * width + x0) as usize..=(y * width + x1) as usize];
+        image.pixels = (y0..=y1).flat_map(row).copied().collect();
+        (image.width, image.height) = (x1 - x0 + 1, y1 - y0 + 1);
+        (image.xhot, image.yhot) = (image.xhot - x0, image.yhot - y0);
+    }
+}
+
 pub fn decode(data: &[u8]) -> Option<Vec<Image>> {
     let word = |offset: usize| Some(u32::from_le_bytes(data.get(offset..offset + 4)?.try_into().ok()?));
     if word(0)? != MAGIC {
@@ -83,5 +105,22 @@ mod tests {
         assert_eq!(repeated.len(), once.len() + 2 * 12);
         let played = decode(&repeated).unwrap();
         assert_eq!(played, vec![images[0].clone(), images[1].clone(), images[0].clone(), images[0].clone()]);
+    }
+
+    #[test]
+    fn crops_to_shared_box_with_margin() {
+        let canvas = |visible: usize, xhot| {
+            let mut pixels = vec![0; 36];
+            pixels[visible] = 0xff00_0000;
+            Image { size: 6, width: 6, height: 6, xhot, yhot: 0, delay: 1, pixels }
+        };
+        // Visible at (2, 2) and (3, 3), hotspots at (0, 0) and (2, 0).
+        let mut images = vec![canvas(14, 0), canvas(21, 2)];
+        crop(&mut images);
+        assert_eq!((images[0].width, images[0].height), (5, 5));
+        assert_eq!([(images[0].xhot, images[0].yhot), (images[1].xhot, images[1].yhot)], [(0, 0), (2, 0)]);
+        assert_eq!(images[0].pixels[2 * 5 + 2], 0xff00_0000);
+        assert_eq!(images[1].pixels[3 * 5 + 3], 0xff00_0000);
+        assert_eq!(images[0].pixels.iter().filter(|&&pixel| pixel != 0).count(), 1);
     }
 }
